@@ -5,7 +5,9 @@
 //
 // Copyright (c) Microsoft Corporation. All rights reserved.
 //--------------------------------------------------------------------------------------
+#pragma once
 #include <windows.h>
+#include <windowsx.h>
 #include <d3d11.h>
 #include <d3dx11.h>
 #include <d3dcompiler.h>
@@ -15,6 +17,10 @@
 #include <postprocess.h>
 #include <vector>
 #include "resource.h"
+#include "input.h"
+#include "Keyboard.h"
+#include "Mouse.h"
+
 
 int mNumVertices = 0; // 总顶点数
 int mNumIndices = 0;  // 总索引数
@@ -24,10 +30,10 @@ int mNumIndices = 0;  // 总索引数
 //--------------------------------------------------------------------------------------
 struct SimpleVertex
 {
-    XMFLOAT3 Pos;
-    XMFLOAT3 Normal;
-    XMFLOAT4 Color;
-    //XMFLOAT2 Texture;
+    XMFLOAT3 Pos;       // 顶点坐标
+    XMFLOAT3 Normal;    // 顶点法线
+    XMFLOAT4 Color;     // 顶点颜色
+    XMFLOAT2 Texture;   // 顶点纹理
 };
 
 
@@ -36,10 +42,10 @@ struct ConstantBuffer
     XMMATRIX mWorld;
     XMMATRIX mView;
     XMMATRIX mProjection;
-    XMFLOAT4 vLightDir;
-    XMFLOAT4 vLightColor;
-    XMFLOAT4 vOutputColor;
-    XMFLOAT4 vCamera;
+    XMFLOAT4 vLightDir;     // 光线方向
+    XMFLOAT4 vLightColor;   // 光线颜色
+    XMFLOAT4 vCamera;       // 相机位置
+    XMFLOAT4 vLookAt;       // 观察位置
 };
 
 
@@ -73,11 +79,16 @@ ID3D11InputLayout* g_pVertexLayout = NULL;
 ID3D11Buffer* g_pVertexBuffer = NULL;
 ID3D11Buffer* g_pIndexBuffer = NULL;
 ID3D11Buffer* g_pConstantBuffer = NULL;
+ID3D11ShaderResourceView* g_pTextureRV = NULL;
+ID3D11SamplerState* g_pSamplerLinear = NULL;
 XMMATRIX                g_World;
 XMMATRIX                g_View;
 XMMATRIX                g_Projection;
+
 std::vector<Model*> models; // 存放加载的所有模型
-std::vector<ID3D11PixelShader*> g_pPixelShaders(5, NULL);
+std::vector<ID3D11PixelShader*> g_pPixelShaders(5, NULL);   // 存放加载的所有 Pixel Shader
+std::unique_ptr<DirectX::Keyboard> m_pKeyboard = std::make_unique<DirectX::Keyboard>(); // 键盘单例
+std::unique_ptr<DirectX::Mouse> m_pMouse = std::make_unique<DirectX::Mouse>(); // 鼠标单例
 
 
 //--------------------------------------------------------------------------------------
@@ -105,14 +116,36 @@ void LoadModel(const aiScene* scene, Model *model)
     model->vertices = new SimpleVertex[model->mNumVertices]; // 开辟顶点空间
     size_t count = 0; // 记录顶点偏移量
     std::vector<unsigned int> index_offset(1, 0);
+
+
     for (int i = 0; i < scene->mNumMeshes; i++) {
         for (int j = 0; j < scene->mMeshes[i]->mNumVertices; j++) {
-            model->vertices[count++] = {
-                XMFLOAT3(scene->mMeshes[i]->mVertices[j].x, scene->mMeshes[i]->mVertices[j].y, scene->mMeshes[i]->mVertices[j].z),
-                XMFLOAT3(scene->mMeshes[i]->mNormals[j].x, scene->mMeshes[i]->mNormals[j].y, scene->mMeshes[i]->mNormals[j].z),
-                XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
-                //XMFLOAT2(scene->mMeshes[i]->mTextureCoords[j]->x, scene->mMeshes[i]->mTextureCoords[j]->y)
-            };
+            aiMaterial* material = scene->mMaterials[scene->mMeshes[i]->mMaterialIndex];
+            aiColor3D color;
+            //读取mtl文件顶点数据
+            //material->Get(AI_MATKEY_COLOR_AMBIENT, color);
+            //mat.Ka = XMFLOAT4(color.r, color.g, color.b, 1.0);
+            material->Get(AI_MATKEY_COLOR_DIFFUSE, color);
+            //mat.Kd = XMFLOAT4(color.r, color.g, color.b, 1.0);
+            //material->Get(AI_MATKEY_COLOR_SPECULAR, color);
+            //mat.Ks = XMFLOAT4(color.r, color.g, color.b, 1.0);
+            if (scene->mMeshes[i]->mTextureCoords[0]) {
+                model->vertices[count++] = {
+                    XMFLOAT3(scene->mMeshes[i]->mVertices[j].x, scene->mMeshes[i]->mVertices[j].y, scene->mMeshes[i]->mVertices[j].z),
+                    XMFLOAT3(scene->mMeshes[i]->mNormals[j].x, scene->mMeshes[i]->mNormals[j].y, scene->mMeshes[i]->mNormals[j].z),
+                    XMFLOAT4(color.r, color.g, color.b, 1.0f),
+                    XMFLOAT2(scene->mMeshes[i]->mTextureCoords[0][0].x, scene->mMeshes[i]->mTextureCoords[0][0].y)
+                };
+            }
+            else {
+                model->vertices[count++] = {
+                    XMFLOAT3(scene->mMeshes[i]->mVertices[j].x, scene->mMeshes[i]->mVertices[j].y, scene->mMeshes[i]->mVertices[j].z),
+                    XMFLOAT3(scene->mMeshes[i]->mNormals[j].x, scene->mMeshes[i]->mNormals[j].y, scene->mMeshes[i]->mNormals[j].z),
+                    XMFLOAT4(color.r, color.g, color.b, 1.0f),
+                    XMFLOAT2(0, 0)
+                };
+            }
+            
         }
         index_offset.push_back(count); // 偏移量放入vector中
     }
@@ -134,6 +167,9 @@ void LoadModel(const aiScene* scene, Model *model)
     models.push_back(model);
 }
 
+//--------------------------------------------------------------------------------------
+// 按模型索引渲染模型
+//--------------------------------------------------------------------------------------
 void RenderModel(int index)
 {
     int vertex_offset = 0;
@@ -210,6 +246,7 @@ HRESULT InitWindow(HINSTANCE hInstance, int nCmdShow)
 
     // Create window
     g_hInst = hInstance;
+
     RECT rc = { 0, 0, 1280, 640 };
     AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
     g_hWnd = CreateWindow(L"TutorialWindowClass", L"Direct3D 11 Tutorial 4: 3D Spaces", WS_OVERLAPPEDWINDOW,
@@ -219,6 +256,8 @@ HRESULT InitWindow(HINSTANCE hInstance, int nCmdShow)
         return E_FAIL;
 
     ShowWindow(g_hWnd, nCmdShow);
+    // Input::GetInstance()->Init(); // 初始化键鼠输入
+
 
     return S_OK;
 }
@@ -255,6 +294,9 @@ HRESULT CompileShaderFromFile(WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szS
     return S_OK;
 }
 
+//--------------------------------------------------------------------------------------
+// 加载Shader PS为Pixel Shader的名称，pixel_shader_index为Pixel Shader的索引
+//--------------------------------------------------------------------------------------
 HRESULT LoadShader(const char* PS, int pixel_shader_index)
 {
     HRESULT hr = S_OK;
@@ -284,7 +326,8 @@ HRESULT LoadShader(const char* PS, int pixel_shader_index)
 HRESULT InitDevice()
 {
     HRESULT hr = S_OK;
-
+    m_pMouse->SetWindow(g_hWnd); // 鼠标设置窗口
+    m_pMouse->SetMode(DirectX::Mouse::MODE_RELATIVE);
     RECT rc;
     GetClientRect(g_hWnd, &rc);
     UINT width = rc.right - rc.left;
@@ -413,7 +456,7 @@ HRESULT InitDevice()
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
         { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
         { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        //{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
     };
     UINT numElements = ARRAYSIZE(layout);
 
@@ -427,7 +470,7 @@ HRESULT InitDevice()
     // Set the input layout
     g_pImmediateContext->IASetInputLayout(g_pVertexLayout);
 
-    char* shaders[5] = { "PS_Ambient_Shading", "PS_Lambertian_Shading", "PS_Blinn_Phong_Shading", "PS_Toon_Shading", "PS_Lambertian_Shading" };
+    char* shaders[5] = { "PS_Lambertian_Shading", "PS_Lambertian_Shading", "PS_Blinn_Phong_Shading", "PS_Lambertian_Shading", "PS_Texture_Mapping" };
     LoadShader(shaders[0], 0);
     LoadShader(shaders[1], 1);
     LoadShader(shaders[2], 2);
@@ -436,10 +479,30 @@ HRESULT InitDevice()
 
 
     // 加载模型
-    const aiScene* scene = aiImportFile("teapot2/teapot2.obj", aiProcessPreset_TargetRealtime_MaxQuality);
+    const aiScene* scene = aiImportFile("E://Downloads/models/buildings/hospital.obj", aiProcessPreset_TargetRealtime_MaxQuality);
     Model* model1 = new Model();
+
+    Model* model2 = new Model();
+    model2->mNumMeshes = 1;     // mesh数
+    model2->mNumFaces = 2;      // 所有mesh的面数
+    model2->mNumVertices = 4;   // 所有mesh的顶点数
+    model2->mNumIndices = 6;    // 所有mesh的索引数
+    SimpleVertex vertices1[] = {
+        { XMFLOAT3(-1.0, 0.0, 1.0), XMFLOAT3(0.0, 1.0, 0.0), XMFLOAT4(1.0, 1.0, 1.0, 1.0), XMFLOAT2(1.0, 1.0)},
+        { XMFLOAT3(1.0, 0.0, 1.0), XMFLOAT3(0.0, 1.0, 0.0), XMFLOAT4(1.0, 1.0, 1.0, 1.0), XMFLOAT2(1.0, 1.0) },
+        { XMFLOAT3(1.0, 0.0, -1.0), XMFLOAT3(0.0, 1.0, 0.0), XMFLOAT4(1.0, 1.0, 1.0, 1.0), XMFLOAT2(1.0, 1.0) },
+        { XMFLOAT3(-1.0, 0.0, -1.0), XMFLOAT3(0.0, 1.0, 0.0), XMFLOAT4(1.0, 1.0, 1.0, 1.0), XMFLOAT2(1.0, 1.0) }
+    }; // 顶点内存
+    WORD indices1[] = {
+        0, 1, 2,
+        2, 3, 0
+    };          // 索引内存
+    model2->vertices = vertices1;
+    model2->indices = indices1;
+    models.push_back(model2);
     
     LoadModel(scene, model1);
+    
 
     // 统计总顶点数和总索引数
     for (auto x : models) {
@@ -502,11 +565,26 @@ HRESULT InitDevice()
     if (FAILED(hr))
         return hr;
 
-    // Initialize the view matrix
-    XMVECTOR Eye = XMVectorSet(0.0f, 5.0f, -8.0f, 0.0f);
-    XMVECTOR At = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
-    XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-    g_View = XMMatrixLookAtLH(Eye, At, Up);
+    // Load the Texture
+    hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"E:/Downloads/models/street_tile/StreetCorner.jpg", NULL, NULL, &g_pTextureRV, NULL);
+    if (FAILED(hr))
+        return hr;
+
+    // Create the sample state
+    D3D11_SAMPLER_DESC sampDesc;
+    ZeroMemory(&sampDesc, sizeof(sampDesc));
+    sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+    sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+    sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+    sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+    sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+    sampDesc.MinLOD = 0;
+    sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+    hr = g_pd3dDevice->CreateSamplerState(&sampDesc, &g_pSamplerLinear);
+    if (FAILED(hr))
+        return hr;
+
+
 
     // Initialize the projection matrix
     g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, width / (FLOAT)height, 0.01f, 100.0f);
@@ -522,6 +600,11 @@ void CleanupDevice()
 {
     if (g_pImmediateContext) g_pImmediateContext->ClearState();
 
+    for (int i = 0; i < g_pPixelShaders.size(); i++) {
+        if (g_pPixelShaders[i]) g_pPixelShaders[i]->Release();
+    }
+    if (g_pSamplerLinear) g_pSamplerLinear->Release();
+    if (g_pTextureRV) g_pTextureRV->Release();
     if (g_pConstantBuffer) g_pConstantBuffer->Release();
     if (g_pVertexBuffer) g_pVertexBuffer->Release();
     if (g_pIndexBuffer) g_pIndexBuffer->Release();
@@ -544,6 +627,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     PAINTSTRUCT ps;
     HDC hdc;
+    // Input::GetInstance()->Listen(message, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // 监听键鼠
+    m_pKeyboard->ProcessMessage(message, wParam, lParam); // 监听键盘
 
     switch (message)
     {
@@ -584,6 +669,79 @@ void Render()
         t = (dwTimeCur - dwTimeStart) / 1000.0f;
     }
 
+    // the view matrix
+    static float eyeX = 0.0;
+    static float eyeZ = -5.0;
+    XMVECTOR Eye = XMVectorSet(eyeX, 2.0f, eyeZ, 0.0f);
+    XMVECTOR At = XMVectorSet(eyeX, 2.0f, eyeZ + 10.0, 0.0f);
+    XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    g_View = XMMatrixLookAtLH(Eye, At, Up);
+
+    /*
+    // 前后左右行走
+    if (Input::GetInstance()->IsKeyDown('W'))
+    {
+        eyeZ += 0.1;
+    }
+    if (Input::GetInstance()->IsKeyDown('S'))
+    {
+        eyeZ -= 0.1;
+    }
+    if (Input::GetInstance()->IsKeyDown('A'))
+    {
+        eyeX -= 0.1;
+    }
+    if (Input::GetInstance()->IsKeyDown('D'))
+    {
+        eyeX += 0.1;
+    }
+
+    if (Input::GetInstance()->IsMouseMove())
+    {
+        float mouseX = Input::GetInstance()->GetMouseX();
+        float mouseY = Input::GetInstance()->GetMouseY();
+        if (Input::GetInstance()->IsLMouseDown())
+        {
+            eyeZ -= 0.1;
+        }
+    }
+    if (Input::GetInstance()->IsMouseMove())
+    {
+        float mouseX = Input::GetInstance()->GetMouseX();
+        float mouseY = Input::GetInstance()->GetMouseY();
+        if (Input::GetInstance()->IsLMouseDown())
+        {
+            float dx = XMConvertToRadians(0.25f * (mouseX - Input::GetInstance()->m_lastMousePos.x));
+            float dy = XMConvertToRadians(0.25f * (mouseY - m_lastMousePos.y));
+
+            OutputDebugString(L"left btn click");
+            m_camera.Pitch(dy);
+            m_camera.RotateY(dx);
+        }
+        m_lastMousePos.x = mouseX;
+        m_lastMousePos.y = mouseY;
+    }
+    */
+    DirectX::Keyboard::State keyState = m_pKeyboard->GetState();
+    if (keyState.IsKeyDown(DirectX::Keyboard::W))
+    {
+        eyeZ += 0.5;
+    }
+    if (keyState.IsKeyDown(DirectX::Keyboard::S))
+    {
+        eyeZ -= 0.5;
+    }
+    if (keyState.IsKeyDown(DirectX::Keyboard::A))
+    {
+        eyeX -= 0.5;
+    }
+    if (keyState.IsKeyDown(DirectX::Keyboard::D))
+    {
+        eyeX += 0.5;
+    }
+    DirectX::Mouse::State mouseState = m_pMouse->GetState();
+    //DirectX::Mouse::State lastMouseState = m_MouseTracker.GetLastState();
+
     //
     // Clear the back buffer
     //
@@ -596,26 +754,28 @@ void Render()
     g_pImmediateContext->ClearDepthStencilView(g_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
     ConstantBuffer cb;
-    int model_num = 5; // 渲染茶壶的个数
-    float x_pos = -10.0f; // 最左边茶壶的x坐标
+    int model_num = 1; // 渲染茶壶的个数
+    float x_pos = -6.0f; // 最左边茶壶的x坐标
 
-    g_pImmediateContext->VSSetShader(g_pVertexShader, NULL, 0);
-    g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
-    for (int i = 0; i < model_num; i++, x_pos += 5.0f) {
-        g_World = XMMatrixRotationY(t) * XMMatrixTranslation(x_pos, 0.0f, 0.0f);
+    for (int i = 0; i < model_num; i++, x_pos += 2.0f) {
+        g_World =  XMMatrixTranslation(x_pos, 0.0f, 0.0f);
         cb.mWorld = XMMatrixTranspose(g_World);
         cb.mView = XMMatrixTranspose(g_View);
         cb.mProjection = XMMatrixTranspose(g_Projection);
 
-        cb.vLightColor = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-        cb.vLightDir = XMFLOAT4(-5.0f, 5.0f, -5.0f, 1.0f);
-        cb.vCamera = XMFLOAT4(0.0f, 5.0f, -8.0f, 1.0f);
+        cb.vLightColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        cb.vLightDir = XMFLOAT4(0.0f, 1.0f, -3.0f, 1.0f);
+        cb.vCamera = XMFLOAT4(0.0f, 2.0f, -5.0f, 1.0f);
 
         g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, NULL, &cb, 0, 0);
+        g_pImmediateContext->VSSetShader(g_pVertexShader, NULL, 0);
+        g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
         g_pImmediateContext->PSSetShader(g_pPixelShaders[i], NULL, 0);
         g_pImmediateContext->PSSetConstantBuffers(0, 1, &g_pConstantBuffer);
+        g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
+        g_pImmediateContext->PSSetSamplers(0, 1, &g_pSamplerLinear);
 
-        RenderModel(0);
+        RenderModel(1);
     }
 
     //
