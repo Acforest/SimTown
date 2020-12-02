@@ -1,6 +1,6 @@
 #include "Camera.h"
 using namespace DirectX;
-//push test
+//test
 Camera::~Camera()
 {
 }
