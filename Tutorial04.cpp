@@ -89,6 +89,7 @@ std::vector<Model*> models; // 存放加载的所有模型
 std::vector<ID3D11PixelShader*> g_pPixelShaders(5, NULL);   // 存放加载的所有 Pixel Shader
 std::unique_ptr<DirectX::Keyboard> m_pKeyboard = std::make_unique<DirectX::Keyboard>(); // 键盘单例
 std::unique_ptr<DirectX::Mouse> m_pMouse = std::make_unique<DirectX::Mouse>(); // 鼠标单例
+DirectX::Mouse::ButtonStateTracker m_MouseTracker; // 鼠标状态追踪
 
 
 //--------------------------------------------------------------------------------------
@@ -256,8 +257,10 @@ HRESULT InitWindow(HINSTANCE hInstance, int nCmdShow)
         return E_FAIL;
 
     ShowWindow(g_hWnd, nCmdShow);
-    // Input::GetInstance()->Init(); // 初始化键鼠输入
 
+    m_pMouse->SetWindow(g_hWnd); // 鼠标设置窗口
+    m_pMouse->SetMode(DirectX::Mouse::MODE_RELATIVE);
+    // Input::GetInstance()->Init(); // 初始化键鼠输入
 
     return S_OK;
 }
@@ -326,8 +329,7 @@ HRESULT LoadShader(const char* PS, int pixel_shader_index)
 HRESULT InitDevice()
 {
     HRESULT hr = S_OK;
-    m_pMouse->SetWindow(g_hWnd); // 鼠标设置窗口
-    m_pMouse->SetMode(DirectX::Mouse::MODE_RELATIVE);
+    
     RECT rc;
     GetClientRect(g_hWnd, &rc);
     UINT width = rc.right - rc.left;
@@ -481,26 +483,6 @@ HRESULT InitDevice()
     // 加载模型
     const aiScene* scene = aiImportFile("E://Downloads/models/buildings/hospital.obj", aiProcessPreset_TargetRealtime_MaxQuality);
     Model* model1 = new Model();
-
-    Model* model2 = new Model();
-    model2->mNumMeshes = 1;     // mesh数
-    model2->mNumFaces = 2;      // 所有mesh的面数
-    model2->mNumVertices = 4;   // 所有mesh的顶点数
-    model2->mNumIndices = 6;    // 所有mesh的索引数
-    SimpleVertex vertices1[] = {
-        { XMFLOAT3(-1.0, 0.0, 1.0), XMFLOAT3(0.0, 1.0, 0.0), XMFLOAT4(1.0, 1.0, 1.0, 1.0), XMFLOAT2(1.0, 1.0)},
-        { XMFLOAT3(1.0, 0.0, 1.0), XMFLOAT3(0.0, 1.0, 0.0), XMFLOAT4(1.0, 1.0, 1.0, 1.0), XMFLOAT2(1.0, 1.0) },
-        { XMFLOAT3(1.0, 0.0, -1.0), XMFLOAT3(0.0, 1.0, 0.0), XMFLOAT4(1.0, 1.0, 1.0, 1.0), XMFLOAT2(1.0, 1.0) },
-        { XMFLOAT3(-1.0, 0.0, -1.0), XMFLOAT3(0.0, 1.0, 0.0), XMFLOAT4(1.0, 1.0, 1.0, 1.0), XMFLOAT2(1.0, 1.0) }
-    }; // 顶点内存
-    WORD indices1[] = {
-        0, 1, 2,
-        2, 3, 0
-    };          // 索引内存
-    model2->vertices = vertices1;
-    model2->indices = indices1;
-    models.push_back(model2);
-    
     LoadModel(scene, model1);
     
 
@@ -587,7 +569,7 @@ HRESULT InitDevice()
 
 
     // Initialize the projection matrix
-    g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, width / (FLOAT)height, 0.01f, 100.0f);
+    g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, width / (FLOAT)height, 0.01f, 1000000.0f);
 
     return S_OK;
 }
@@ -629,6 +611,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     HDC hdc;
     // Input::GetInstance()->Listen(message, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // 监听键鼠
     m_pKeyboard->ProcessMessage(message, wParam, lParam); // 监听键盘
+    m_pMouse->ProcessMessage(message, wParam, lParam);    // 监听鼠标
 
     switch (message)
     {
@@ -739,8 +722,15 @@ void Render()
     {
         eyeX += 0.5;
     }
+    
     DirectX::Mouse::State mouseState = m_pMouse->GetState();
-    //DirectX::Mouse::State lastMouseState = m_MouseTracker.GetLastState();
+    DirectX::Mouse::State lastMouseState = m_MouseTracker.GetLastState();
+    int dx = mouseState.x - lastMouseState.x, dz = mouseState.y - lastMouseState.y;
+    XMMATRIX mRotate = XMMatrixRotationRollPitchYaw(dx, dz, 0.0f);
+    XMFLOAT4 f_At;
+    XMStoreFloat4(&f_At, At);
+    m_MouseTracker.Update(mouseState);
+    
 
     //
     // Clear the back buffer
@@ -763,8 +753,8 @@ void Render()
         cb.mView = XMMatrixTranspose(g_View);
         cb.mProjection = XMMatrixTranspose(g_Projection);
 
-        cb.vLightColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-        cb.vLightDir = XMFLOAT4(0.0f, 1.0f, -3.0f, 1.0f);
+        cb.vLightColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.5f);
+        cb.vLightDir = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
         cb.vCamera = XMFLOAT4(0.0f, 2.0f, -5.0f, 1.0f);
 
         g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, NULL, &cb, 0, 0);
@@ -775,7 +765,7 @@ void Render()
         g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureRV);
         g_pImmediateContext->PSSetSamplers(0, 1, &g_pSamplerLinear);
 
-        RenderModel(1);
+        RenderModel(0);
     }
 
     //

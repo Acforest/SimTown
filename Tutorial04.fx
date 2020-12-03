@@ -65,7 +65,7 @@ float4 PS_Ambient_Shading(PS_INPUT input) : SV_Target
 
 float4 PS_Lambertian_Shading(PS_INPUT input) : SV_Target
 {
-    float4 finalColor = saturate(input.Color * vLightColor * dot(normalize((float3) vLightDir), input.Norm) + float4(0.3, 0.3, 0.3, 1.0));
+    float4 finalColor = saturate(input.Color * vLightColor * dot(normalize((float3) vLightDir), input.Norm) + float4(0.1, 0.1, 0.1, 1.0));
 	finalColor.a = 1.0f;
     return finalColor;
 }
@@ -76,7 +76,7 @@ float4 PS_Blinn_Phong_Shading(PS_INPUT input) : SV_Target
     float3 bisector = normalize((float3) (normalize(vCamera - input.Pos) + vLightDir)); // 相机视方向与光线方向的二分线
     int x = 5;  // 高光指数
     float4 sc = { 1.0f, 1.0f, 1.0f, 1.0f }; // 高光颜色
-    finalColor = saturate(input.Color * vLightColor * max(dot(normalize((float3) vLightDir), input.Norm), 0) + sc * vLightColor * pow(max(dot(bisector, input.Norm), 0), x));
+    finalColor = input.Color * vLightColor * max(dot(normalize((float3) vLightDir), input.Norm), 0) + sc * vLightColor * pow(max(dot(bisector, input.Norm), 0), x);
     finalColor.a = 1.0f;
     return finalColor;
 }
