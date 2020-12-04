@@ -372,18 +372,17 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="input.cpp" />
     <ClCompile Include="Keyboard.cpp" />
     <ClCompile Include="Mouse.cpp" />
-    <ClCompile Include="Tutorial04.cpp" />
+    <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Tutorial04.fx" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="input.h" />
     <ClInclude Include="Keyboard.h" />
     <ClInclude Include="Mouse.h" />
+    <ClInclude Include="Resource.h" />
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>
