@@ -120,13 +120,15 @@ void LoadModel(const aiScene* scene, Model *model)
 
 
     for (int i = 0; i < scene->mNumMeshes; i++) {
+        aiMaterial* material = scene->mMaterials[scene->mMeshes[i]->mMaterialIndex];
+        aiColor3D color;
+        material->Get(AI_MATKEY_COLOR_DIFFUSE, color);
         for (int j = 0; j < scene->mMeshes[i]->mNumVertices; j++) {
-            aiMaterial* material = scene->mMaterials[scene->mMeshes[i]->mMaterialIndex];
-            aiColor3D color;
+            
             //读取mtl文件顶点数据
             //material->Get(AI_MATKEY_COLOR_AMBIENT, color);
             //mat.Ka = XMFLOAT4(color.r, color.g, color.b, 1.0);
-            material->Get(AI_MATKEY_COLOR_DIFFUSE, color);
+            
             //mat.Kd = XMFLOAT4(color.r, color.g, color.b, 1.0);
             //material->Get(AI_MATKEY_COLOR_SPECULAR, color);
             //mat.Ks = XMFLOAT4(color.r, color.g, color.b, 1.0);
