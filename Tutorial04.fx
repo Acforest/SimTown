@@ -18,7 +18,6 @@ cbuffer ConstantBuffer : register( b0 )
     float4 vLightDir[3];
     float4 vLightColor[3];
     float4 vCamera;
-    float4 vLookAt;
 }
 
 //--------------------------------------------------------------------------------------

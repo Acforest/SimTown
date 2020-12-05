@@ -43,10 +43,9 @@ struct ConstantBuffer
     XMMATRIX mWorld;
     XMMATRIX mView;
     XMMATRIX mProjection;
-    XMFLOAT4 vLightDir[3];     // 光线方向
-    XMFLOAT4 vLightColor[3];   // 光线颜色
-    XMFLOAT4 vCamera;       // 相机位置
-    XMFLOAT4 vLookAt;       // 观察位置
+    XMFLOAT4 vLightDir[3];      // 光线方向
+    XMFLOAT4 vLightColor[3];    // 光线颜色
+    XMFLOAT4 vCamera;           // 相机位置
 };
 
 
@@ -88,6 +87,7 @@ XMMATRIX                g_World;
 XMMATRIX                g_View;
 XMMATRIX                g_Projection;
 ConstantBuffer          cb;
+ID3D11ShaderResourceView* m_pTexture = NULL;
 
 std::vector<Model*> models; // 存放加载的所有模型
 std::vector<ID3D11PixelShader*> g_pPixelShaders(5, NULL);   // 存放加载的所有 Pixel Shader
@@ -97,6 +97,9 @@ std::unique_ptr<DirectX::Mouse> m_pMouse = std::make_unique<DirectX::Mouse>(); /
 DirectX::Mouse::ButtonStateTracker m_MouseTracker; // 鼠标状态追踪
 std::vector<SimpleVertex> skyVertices; // 天空盒顶点
 std::vector<WORD> skyIndices;  // 天空盒索引
+XMVECTOR Eye = XMVectorSet(0.0f, 1.0f, -5.0f, 0.0f);
+XMVECTOR At = XMVectorSet(0.0f, 1.0f, 5.0f, 0.0f);
+XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
 
 //--------------------------------------------------------------------------------------
@@ -108,7 +111,82 @@ void CleanupDevice();
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 void Render();
 
-namespace Assimp
+// 第一人称相机
+class FirstPersonCamera
+{
+private:
+    XMFLOAT4 mPosition;     // 位置
+    XMFLOAT4 mTarget;       // 看的位置
+    XMFLOAT4 mUpAxis;       // 上方向（局部坐标系的+Y轴）
+    XMFLOAT4 mRightAxis;    // 右方向（局部坐标系的+X轴）
+public:
+    FirstPersonCamera(XMVECTOR& mPosition, XMVECTOR& mTarget, XMVECTOR& mUpAxis, XMVECTOR& mRightAxis)
+    {
+        XMStoreFloat4(&this->mPosition, mPosition);
+        XMStoreFloat4(&this->mTarget, mTarget);
+        XMStoreFloat4(&this->mUpAxis, mUpAxis);
+        XMStoreFloat4(&this->mRightAxis, mRightAxis);
+    }
+    XMFLOAT4 GetPosition()
+    {
+        return mPosition;
+    }
+    XMFLOAT4 GetTarget()
+    {
+        return mTarget;
+    }
+    XMFLOAT4 GetUpAxis()
+    {
+        return mUpAxis;
+    }
+    XMFLOAT4 GetRightAxis()
+    {
+        return mRightAxis;
+    }
+    // 左右移动
+    void MoveLeftRight(float d)
+    {
+        float normalize_Length = mRightAxis.x * mRightAxis.x + mRightAxis.z * mRightAxis.z;
+        float normalize_X = mRightAxis.x / normalize_Length;
+        float normalize_Z = mRightAxis.z / normalize_Length;
+        mPosition.x += normalize_X * d;
+        mPosition.z += normalize_Z * d;
+    }
+    // 前后移动
+    void MoveForwardBack(float d)
+    {
+        float normalize_Length = mTarget.x * mTarget.x + mTarget.z * mTarget.z;
+        float normalize_X = mTarget.x / normalize_Length;
+        float normalize_Z = mTarget.z / normalize_Length;
+        mPosition.x += normalize_X * d;
+        mPosition.z += normalize_Z * d;
+    }
+    // 抬头低头（绕局部坐标系的X轴旋转）
+    void Pitch(float rad)
+    {
+        // 绕局部坐标系的X轴旋转
+        XMFLOAT4 saveTarget = mTarget;
+        XMVECTOR newTarget = XMVector4Transform(XMLoadFloat4(&mTarget), XMMatrixRotationAxis(XMLoadFloat4(&mRightAxis), rad));
+        XMStoreFloat4(&mTarget, newTarget);
+        // 防止万向节死锁
+        //if (mTarget.y < -0.95f || mTarget.y > 0.95f) {
+        //    mTarget = saveTarget;
+        //}
+    }
+    // 左右转头（绕局部坐标系的Y轴旋转）
+    void Yaw(float rad)
+    {
+        // 绕Y轴旋转
+        XMVECTOR newTarget = XMVector4Transform(XMLoadFloat4(&mTarget), XMMatrixRotationY(rad));
+        XMStoreFloat4(&mTarget, newTarget);
+        // 右方向也要更新
+        XMVECTOR newRightAxis = XMVector4Transform(XMLoadFloat4(&mRightAxis), XMMatrixRotationY(rad));
+        XMStoreFloat4(&mRightAxis, newRightAxis);
+    }
+};
+FirstPersonCamera* m_pFirstPersonCamera = NULL; // 第一人称相机指针
+
+namespace AssimpModel
 {
     //--------------------------------------------------------------------------------------
     // 加载模型函数
@@ -131,13 +209,10 @@ namespace Assimp
             for (int j = 0; j < scene->mMeshes[i]->mNumVertices; j++) {
                 aiMaterial* material = scene->mMaterials[scene->mMeshes[i]->mMaterialIndex];
                 aiColor3D color;
-                //读取mtl文件顶点数据
-                //material->Get(AI_MATKEY_COLOR_AMBIENT, color);
-                //mat.Ka = XMFLOAT4(color.r, color.g, color.b, 1.0);
+                // 读取mtl文件顶点数据
+                // material->Get(AI_MATKEY_COLOR_AMBIENT, color);
                 material->Get(AI_MATKEY_COLOR_DIFFUSE, color);
-                //mat.Kd = XMFLOAT4(color.r, color.g, color.b, 1.0);
-                //material->Get(AI_MATKEY_COLOR_SPECULAR, color);
-                //mat.Ks = XMFLOAT4(color.r, color.g, color.b, 1.0);
+                // material->Get(AI_MATKEY_COLOR_SPECULAR, color);
                 if (scene->mMeshes[i]->mTextureCoords[0]) {
                     model->vertices[count++] = {
                         XMFLOAT3(scene->mMeshes[i]->mVertices[j].x, scene->mMeshes[i]->mVertices[j].y, scene->mMeshes[i]->mVertices[j].z),
@@ -177,10 +252,10 @@ namespace Assimp
     //--------------------------------------------------------------------------------------
     // 从文件读入所有模型
     //--------------------------------------------------------------------------------------
-    void LoadModelsFromFile(std::string filepath, std::vector<Model*>& models)
+    void LoadModelsFromFile(std::string filePath, std::vector<Model*>& models)
     {
         std::ifstream inFile;
-        inFile.open(filepath, std::ios::in);
+        inFile.open(filePath, std::ios::in);
         if (inFile) {
             std::string modelName, modelPath;
             while (inFile >> modelName >> modelPath) {
@@ -195,7 +270,7 @@ namespace Assimp
     }
 
     //--------------------------------------------------------------------------------------
-    // 按模型索引渲染模型
+    // 按模型名称渲染模型
     //--------------------------------------------------------------------------------------
     void RenderModel(std::string modelName, ConstantBuffer &m_pConstantBuffer, XMMATRIX &m_pWorld)
     {
@@ -215,6 +290,29 @@ namespace Assimp
             }
             index_offset += models[i]->mNumIndices;
             vertex_offset += models[i]->mNumVertices;
+        }
+    }
+}
+
+namespace Terrain
+{
+    //--------------------------------------------------------------------------------------
+    // 加载高度图
+    //--------------------------------------------------------------------------------------
+    void LoadHeightMap(std::string filePath, std::string texturePath)
+    {
+        std::ifstream inFile;
+        inFile.open(filePath, std::ios::binary); // 用二进制的方式打开文件
+        std::vector<BYTE> inData(inFile.tellg()); // 用模板定义一个vector<BYTE>类型的变量inData并初始化，其值为缓冲区当前位置，即缓冲区大小
+        inFile.seekg(std::ios::beg);  // 将文件指针移动到文件的开头，准备读取高度信息
+        inFile.read((char*)&inData[0], inData.size()); // 读取整个高度信息
+        inFile.close();
+
+        std::vector<FLOAT> m_vHeightInfo;   // 用于存放高度信息
+        m_vHeightInfo.resize(inData.size()); // 将m_vHeightInfo尺寸取为缓冲区的尺寸
+        // 遍历整个缓冲区，将inData中的值赋给m_vHeightInfo
+        for (unsigned int i = 0; i < inData.size(); i++) {
+            m_vHeightInfo[i] = inData[i];
         }
     }
 }
@@ -603,22 +701,9 @@ HRESULT InitDevice()
     g_pd3dDevice->CreateDepthStencilState(&dsDesc, g_pDSS);
     //CreateDDSTextureFromFile( g_pd3dDevice, nullptr, L"Texture\\desertcube.dds", nullptr, &pTextureCubeSRV);
 
-
+    m_pFirstPersonCamera = new FirstPersonCamera(Eye, At, Up, XMVector4Normalize(XMVector3Cross(Up, At))); // 创建第一人称相机
     // 加载模型
-    Assimp::LoadModelsFromFile("models.txt", models);
-
-    m_Worlds.push_back(XMMatrixTranslation(0.0f, 0.0f, 300.0f));
-    m_Worlds.push_back(XMMatrixTranslation(100.0f, 0.0f, 300.0f));
-    m_Worlds.push_back(XMMatrixTranslation(200.0f, 0.0f, 300.0f));
-    m_Worlds.push_back(XMMatrixTranslation(300.0f, 0.0f, 300.0f));
-    m_Worlds.push_back(XMMatrixTranslation(400.0f, 0.0f, 300.0f));
-    m_Worlds.push_back(XMMatrixTranslation(500.0f, 0.0f, 300.0f));
-    m_Worlds.push_back(XMMatrixTranslation(600.0f, 0.0f, 300.0f));
-    m_Worlds.push_back(XMMatrixTranslation(700.0f, 0.0f, 300.0f));
-    m_Worlds.push_back(XMMatrixTranslation(800.0f, 0.0f, 300.0f));
-    m_Worlds.push_back(XMMatrixTranslation(900.0f, 0.0f, 300.0f));
-
-    
+    AssimpModel::LoadModelsFromFile("models.txt", models);
 
     // 统计总顶点数和总索引数
     for (auto x : models) {
@@ -700,8 +785,6 @@ HRESULT InitDevice()
     if (FAILED(hr))
         return hr;
 
-
-
     // Initialize the projection matrix
     g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, width / (FLOAT)height, 0.01f, 1000000.0f);
 
@@ -735,7 +818,6 @@ void CleanupDevice()
     if (g_pd3dDevice) g_pd3dDevice->Release();
 }
 
-
 //--------------------------------------------------------------------------------------
 // Called every time the application receives a message
 //--------------------------------------------------------------------------------------
@@ -765,7 +847,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-
 //--------------------------------------------------------------------------------------
 // Render a frame
 //--------------------------------------------------------------------------------------
@@ -785,92 +866,42 @@ void Render()
             dwTimeStart = dwTimeCur;
         t = (dwTimeCur - dwTimeStart) / 1000.0f;
     }
-
-    // the view matrix
-    static float eyeX = 0.0;
-    static float eyeZ = -5.0;
-    XMVECTOR Eye = XMVectorSet(eyeX, 2.0f, eyeZ, 0.0f);
-    XMVECTOR At = XMVectorSet(eyeX, 2.0f, eyeZ + 10.0, 0.0f);
-    XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-    g_View = XMMatrixLookAtLH(Eye, At, Up);
-
-    /*
-    // 前后左右行走
-    if (Input::GetInstance()->IsKeyDown('W'))
-    {
-        eyeZ += 0.1;
-    }
-    if (Input::GetInstance()->IsKeyDown('S'))
-    {
-        eyeZ -= 0.1;
-    }
-    if (Input::GetInstance()->IsKeyDown('A'))
-    {
-        eyeX -= 0.1;
-    }
-    if (Input::GetInstance()->IsKeyDown('D'))
-    {
-        eyeX += 0.1;
-    }
-
-    if (Input::GetInstance()->IsMouseMove())
-    {
-        float mouseX = Input::GetInstance()->GetMouseX();
-        float mouseY = Input::GetInstance()->GetMouseY();
-        if (Input::GetInstance()->IsLMouseDown())
-        {
-            eyeZ -= 0.1;
-        }
-    }
-    if (Input::GetInstance()->IsMouseMove())
-    {
-        float mouseX = Input::GetInstance()->GetMouseX();
-        float mouseY = Input::GetInstance()->GetMouseY();
-        if (Input::GetInstance()->IsLMouseDown())
-        {
-            float dx = XMConvertToRadians(0.25f * (mouseX - Input::GetInstance()->m_lastMousePos.x));
-            float dy = XMConvertToRadians(0.25f * (mouseY - m_lastMousePos.y));
-
-            OutputDebugString(L"left btn click");
-            m_camera.Pitch(dy);
-            m_camera.RotateY(dx);
-        }
-        m_lastMousePos.x = mouseX;
-        m_lastMousePos.y = mouseY;
-    }
-    */
+    
+    // 更新视角
+    Eye = XMLoadFloat4(&m_pFirstPersonCamera->GetPosition());
+    At = XMLoadFloat4(&m_pFirstPersonCamera->GetTarget());
+    g_View = XMMatrixLookAtLH(Eye, Eye + At, Up);
+    
+    // 监听键盘
     DirectX::Keyboard::State keyState = m_pKeyboard->GetState();
     if (keyState.IsKeyDown(DirectX::Keyboard::W))
     {
-        eyeZ += 0.5;
+        m_pFirstPersonCamera->MoveForwardBack(2.0f);
     }
     if (keyState.IsKeyDown(DirectX::Keyboard::S))
     {
-        eyeZ -= 0.5;
+        m_pFirstPersonCamera->MoveForwardBack(-2.0f);
     }
     if (keyState.IsKeyDown(DirectX::Keyboard::A))
     {
-        eyeX -= 0.5;
+        m_pFirstPersonCamera->MoveLeftRight(-0.1f);
     }
     if (keyState.IsKeyDown(DirectX::Keyboard::D))
     {
-        eyeX += 0.5;
+        m_pFirstPersonCamera->MoveLeftRight(0.1f);
     }
     if (keyState.IsKeyDown(DirectX::Keyboard::Escape))
     {
         SendMessage(g_hWnd, WM_DESTROY, 0, 0);
     }
     
+    // 监听鼠标
     DirectX::Mouse::State mouseState = m_pMouse->GetState();
-    DirectX::Mouse::State lastMouseState = m_MouseTracker.GetLastState();
-    int dx = mouseState.x - lastMouseState.x, dz = mouseState.y - lastMouseState.y;
-    XMMATRIX mRotate = XMMatrixRotationRollPitchYaw(dx, dz, 0.0f);
-    XMFLOAT4 f_At;
-    XMStoreFloat4(&f_At, At);
-
-
-    m_MouseTracker.Update(mouseState);
-    
+    if (mouseState.positionMode == DirectX::Mouse::MODE_RELATIVE)
+    {      
+        m_pFirstPersonCamera->Pitch(mouseState.y * 0.005f);
+        m_pFirstPersonCamera->Yaw(mouseState.x * 0.005f);
+    }
 
     //
     // Clear the back buffer
@@ -912,7 +943,7 @@ void Render()
         cb.vLightColor[2] = vLightColors[2];
         cb.vCamera = vCamera;
 
-        Assimp::RenderModel(models[i]->mName, cb, mWorld);
+        AssimpModel::RenderModel(models[i]->mName, cb, mWorld);
     }
 
     //
