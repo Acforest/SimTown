@@ -42,5 +42,23 @@
     <ClInclude Include="Resource.h">
       <Filter>Resource Files</Filter>
     </ClInclude>
+    <ClInclude Include="Main.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FirstPersonCamera.h">
+      <Filter>通用文件</Filter>
+    </ClInclude>
+    <ClInclude Include="SkyBox.h">
+      <Filter>通用文件</Filter>
+    </ClInclude>
+    <ClInclude Include="AssimpModel.h">
+      <Filter>通用文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Terrain.h">
+      <Filter>通用文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Helper.h">
+      <Filter>通用文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

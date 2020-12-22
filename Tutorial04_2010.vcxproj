@@ -380,9 +380,15 @@
     <None Include="Tutorial04.fx" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AssimpModel.h" />
+    <ClInclude Include="FirstPersonCamera.h" />
+    <ClInclude Include="Helper.h" />
     <ClInclude Include="Keyboard.h" />
+    <ClInclude Include="Main.h" />
     <ClInclude Include="Mouse.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="SkyBox.h" />
+    <ClInclude Include="Terrain.h" />
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>
