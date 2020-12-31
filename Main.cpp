@@ -1,5 +1,6 @@
 #pragma once
 #include "Main.h"
+#include <Importer.hpp>
 
 Terrain::Terrain()
 {
@@ -221,6 +222,7 @@ namespace AssimpModel
 
         int meshVertexOffset = 0;
         int meshIndexOffset = 0;
+        XMFLOAT3 aabbMaxPos, aabbMinPos;
         model->meshVertexOffset.resize(1);
         model->meshIndexOffset.resize(1);
         for (int i = 0; i < scene->mNumMeshes; i++) {
@@ -232,28 +234,54 @@ namespace AssimpModel
             // material->Get(AI_MATKEY_COLOR_SPECULAR, color);
             model->mColors.push_back(XMFLOAT4(color.r, color.g, color.b, 1.0f));
             for (int j = 0; j < scene->mMeshes[i]->mNumVertices; j++) {
-                if (scene->mMeshes[i]->mTextureCoords[0]) {
+                if (scene->mMeshes[i]->HasTextureCoords(0) && scene->mMeshes[i]->HasNormals()) {
                     model->vertices[count++] = {
                         XMFLOAT3(scene->mMeshes[i]->mVertices[j].x, scene->mMeshes[i]->mVertices[j].y, scene->mMeshes[i]->mVertices[j].z),
                         XMFLOAT3(scene->mMeshes[i]->mNormals[j].x, scene->mMeshes[i]->mNormals[j].y, scene->mMeshes[i]->mNormals[j].z),
-                        XMFLOAT4(color.r, color.g, color.b, 1.0f),
+                        XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
                         XMFLOAT2(scene->mMeshes[i]->mTextureCoords[0][j].x, scene->mMeshes[i]->mTextureCoords[0][j].y)
                     };
                 }
-                else {
+                else if (scene->mMeshes[i]->HasTextureCoords(0) && !scene->mMeshes[i]->HasNormals()) {
+                    model->vertices[count++] = {
+                        XMFLOAT3(scene->mMeshes[i]->mVertices[j].x, scene->mMeshes[i]->mVertices[j].y, scene->mMeshes[i]->mVertices[j].z),
+                        XMFLOAT3(0.0f, 0.0f, 0.0f),
+                        XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
+                        XMFLOAT2(scene->mMeshes[i]->mTextureCoords[0][j].x, scene->mMeshes[i]->mTextureCoords[0][j].y)
+                    };
+                }
+                else if (!scene->mMeshes[i]->HasTextureCoords(0) && scene->mMeshes[i]->HasNormals()) {
                     model->vertices[count++] = {
                         XMFLOAT3(scene->mMeshes[i]->mVertices[j].x, scene->mMeshes[i]->mVertices[j].y, scene->mMeshes[i]->mVertices[j].z),
                         XMFLOAT3(scene->mMeshes[i]->mNormals[j].x, scene->mMeshes[i]->mNormals[j].y, scene->mMeshes[i]->mNormals[j].z),
-                        XMFLOAT4(color.r, color.g, color.b, 1.0f),
+                        XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
                         XMFLOAT2(1.0f, 1.0f)
                     };
                 }
-
+                if (scene->mMeshes[i]->mVertices[j].x > aabbMaxPos.x) {
+                    aabbMaxPos.x = scene->mMeshes[i]->mVertices[j].x;
+                }
+                if (scene->mMeshes[i]->mVertices[j].y > aabbMaxPos.y) {
+                    aabbMaxPos.y = scene->mMeshes[i]->mVertices[j].y;
+                }
+                if (scene->mMeshes[i]->mVertices[j].z > aabbMaxPos.z) {
+                    aabbMaxPos.z = scene->mMeshes[i]->mVertices[j].z;
+                }
+                if (scene->mMeshes[i]->mVertices[j].x < aabbMaxPos.x) {
+                    aabbMaxPos.x = scene->mMeshes[i]->mVertices[j].x;
+                }
+                if (scene->mMeshes[i]->mVertices[j].y < aabbMaxPos.y) {
+                    aabbMaxPos.y = scene->mMeshes[i]->mVertices[j].y;
+                }
+                if (scene->mMeshes[i]->mVertices[j].z < aabbMaxPos.z) {
+                    aabbMaxPos.z = scene->mMeshes[i]->mVertices[j].z;
+                }
             }
             meshVertexOffset += scene->mMeshes[i]->mNumVertices;
             model->meshVertexOffset.push_back(meshVertexOffset);
             index_offset.push_back(count); // 偏移量放入vector中
         }
+
 
         // 创建索引内存
         model->indices = new WORD[model->mNumIndices]; // 开辟索引空间
@@ -280,12 +308,14 @@ namespace AssimpModel
     {
         std::ifstream inFile;
         inFile.open(filePath, std::ios::in);
+        Assimp::Importer importer;
         if (inFile) {
             std::string modelName, modelPath;
             while (inFile >> modelName >> modelPath) {
                 Model* model = new Model();
                 model->mName = modelName;
-                const aiScene* scene = aiImportFile(modelPath.c_str(), aiProcessPreset_TargetRealtime_MaxQuality | aiProcess_Triangulate);
+                const aiScene* scene = importer.ReadFile(modelPath.c_str(), aiProcessPreset_TargetRealtime_MaxQuality | aiProcess_ConvertToLeftHanded |
+                    aiProcess_Triangulate | aiProcess_FixInfacingNormals);
                 LoadModel(scene, model);
                 models.push_back(model);
             }
@@ -316,7 +346,7 @@ namespace AssimpModel
                     g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, NULL, &cb, 0, 0);
                     g_pImmediateContext->VSSetShader(g_pVertexShader, NULL, 0);
                     g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
-                    g_pImmediateContext->PSSetShader(g_pPixelShaders[4], NULL, 0);
+                    g_pImmediateContext->PSSetShader(g_pPixelShaders[2], NULL, 0);
                     g_pImmediateContext->PSSetConstantBuffers(0, 1, &g_pConstantBuffer);
                     g_pImmediateContext->PSSetShaderResources(1, 1, &g_pTextureRV);
                     g_pImmediateContext->PSSetSamplers(0, 1, &g_pSamplerLinear);
@@ -591,6 +621,8 @@ HRESULT InitDevice()
     LoadShader(shaders[4], 4);
     // 创建第一人称相机
     m_pFirstPersonCamera = new FirstPersonCamera(Eye, At, Up, XMVector4Normalize(XMVector3Cross(Up, At)));
+    // 创建自由视角相机
+    m_pFreeLookCamera = new FreeLookCamera(Eye, At, Up, XMVector4Normalize(XMVector3Cross(Up, At)));
     // 加载模型
     AssimpModel::LoadModelsFromFile("models.txt", models);
 
@@ -821,43 +853,91 @@ void Render()
             dwTimeStart = dwTimeCur;
         t = (dwTimeCur - dwTimeStart) / 1000.0f;
     }
-    
+
     // 更新视角
-    Eye = XMLoadFloat4(&m_pFirstPersonCamera->GetPosition());
-    At = XMLoadFloat4(&m_pFirstPersonCamera->GetTarget());
-    g_View = XMMatrixLookAtLH(Eye, Eye + At, Up);
+    if (mUsedCamera == 0) {
+        Eye = XMLoadFloat4(&m_pFirstPersonCamera->GetPosition());
+        At = XMLoadFloat4(&m_pFirstPersonCamera->GetTarget());
+        g_View = XMMatrixLookAtLH(Eye, Eye + At, Up);
+    }
+    else {
+        Eye = XMLoadFloat4(&m_pFreeLookCamera->GetPosition());
+        At = XMLoadFloat4(&m_pFreeLookCamera->GetTarget());
+        g_View = XMMatrixLookAtLH(Eye, Eye + At, Up);
+    }
+
+    XMFLOAT4 vCamera;
+    XMStoreFloat4(&vCamera, Eye);
     
     // 监听键盘
     DirectX::Keyboard::State keyState = m_pKeyboard->GetState();
+    if (keyState.IsKeyDown(DirectX::Keyboard::D1))
+    {
+        mUsedCamera = 0;
+    }
+    if (keyState.IsKeyDown(DirectX::Keyboard::D2))
+    {
+        mUsedCamera = 1;
+    }
     if (keyState.IsKeyDown(DirectX::Keyboard::W))
     {
-        m_pFirstPersonCamera->MoveForwardBack(2.0f);
+        if (mUsedCamera == 0) {
+            m_pFirstPersonCamera->MoveForwardBack(2.0f);
+        }
+        else {
+            m_pFreeLookCamera->MoveForwardBack(2.0f);
+        }
     }
     if (keyState.IsKeyDown(DirectX::Keyboard::S))
     {
-        m_pFirstPersonCamera->MoveForwardBack(-2.0f);
+        if (mUsedCamera == 0) {
+            m_pFirstPersonCamera->MoveForwardBack(-2.0f);
+        }
+        else {
+            m_pFreeLookCamera->MoveForwardBack(-2.0f);
+        }
     }
     if (keyState.IsKeyDown(DirectX::Keyboard::A))
     {
-        m_pFirstPersonCamera->MoveLeftRight(-0.5f);
+        if (mUsedCamera == 0) {
+            m_pFirstPersonCamera->MoveLeftRight(-0.5f);
+        }
+        else {
+            m_pFreeLookCamera->MoveLeftRight(-0.5f);
+        }
     }
     if (keyState.IsKeyDown(DirectX::Keyboard::D))
     {
-        m_pFirstPersonCamera->MoveLeftRight(0.5f);
+        if (mUsedCamera == 0) {
+            m_pFirstPersonCamera->MoveLeftRight(0.5f);
+        }
+        else {
+            m_pFreeLookCamera->MoveLeftRight(0.5f);
+        }
     }
     if (keyState.IsKeyDown(DirectX::Keyboard::Escape))
     {
         SendMessage(g_hWnd, WM_DESTROY, 0, 0);
     }
-    
+    if (keyState.IsKeyDown(DirectX::Keyboard::Space) && mUsedCamera == 0)
+    {
+        m_pFirstPersonCamera->Jump();
+    }
+    m_pFirstPersonCamera->CheckJump(0.1f, 10.0f, 30.0f);
+
     // 监听鼠标
     DirectX::Mouse::State mouseState = m_pMouse->GetState();
     if (mouseState.positionMode == DirectX::Mouse::MODE_RELATIVE)
-    {      
-        m_pFirstPersonCamera->Pitch(mouseState.y * 0.005f);
-        m_pFirstPersonCamera->Yaw(mouseState.x * 0.005f);
+    {
+        if (mUsedCamera == 0) {
+            m_pFirstPersonCamera->Pitch(mouseState.y * 0.005f);
+            m_pFirstPersonCamera->Yaw(mouseState.x * 0.005f);
+        }
+        else {
+            m_pFreeLookCamera->Pitch(mouseState.y * 0.005f);
+            m_pFreeLookCamera->Yaw(mouseState.x * 0.005f);
+        }
     }
-
     //
     // Clear the back buffer
     //
@@ -877,16 +957,19 @@ void Render()
     };
     XMFLOAT4 vLightColors[3] =
     {
-        XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f),
-        XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f),
-        XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f)
+        XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
+        XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
+        XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f)
     };
-
-    XMFLOAT4 vCamera;
-    XMStoreFloat4(&vCamera, Eye);
+    static bool setAABB = false;
     float x_pos = 0;
-    for (int i = 0; i < models.size(); i++, x_pos += 100.0f) {
-        XMMATRIX mWorld = XMMatrixTranslation(x_pos, 0, 500.0f);
+    for (int i = 0; i < models.size(); i++, x_pos += 1000.0f) {
+        XMMATRIX mWorld = XMMatrixScaling(5.0f, 5.0f, 5.0f) * XMMatrixTranslation(x_pos, 0, 500.0f);
+        if (setAABB == false) {
+            AABB aabbBox;
+            aabbBox.SetAABB(mWorld, models[i]); // 创建AABB盒
+            AABBs.push_back(aabbBox);
+        }
         cb.mView = XMMatrixTranspose(g_View);
         cb.mProjection = XMMatrixTranspose(g_Projection);
 
@@ -900,6 +983,7 @@ void Render()
 
         AssimpModel::RenderModel(models[i]->mName, cb, mWorld);
     }
+    setAABB = true;
     ConstantBuffer tcb;
     tcb.mWorld = XMMatrixTranslation(0, 0, 0) * XMMatrixScaling(1, 0, 1);
     tcb.mView = XMMatrixTranspose(g_View);

@@ -15,9 +15,11 @@
 #include "Keyboard.h"
 #include "Mouse.h"
 #include "FirstPersonCamera.h"
+#include "FreeLookCamera.h"
 #include "AssimpModel.h"
 #include "Terrain.h"
 #include "Helper.h"
+#include "BoundingBox.h"
 
 
 HINSTANCE                   g_hInst = NULL;
@@ -45,6 +47,7 @@ XMMATRIX                    g_Projection;
 ConstantBuffer              cb;
 ID3D11ShaderResourceView*   m_pTexture = NULL;
 FirstPersonCamera*          m_pFirstPersonCamera = NULL; // 第一人称相机指针
+FreeLookCamera*				m_pFreeLookCamera = NULL; // 第一人称相机指针
 Terrain*					m_pTerrain; // 地形指针
 ID3D11Buffer*				g_pSkyVertexBuffer = NULL;
 ID3D11Buffer*				g_pSkyIndexBuffer = NULL;
@@ -65,6 +68,8 @@ XMVECTOR At = XMVectorSet(0.0f, 0.0f, 5.0f, 0.0f);
 XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 int mNumVertices = 0; // 总顶点数
 int mNumIndices = 0;  // 总索引数
+bool mUsedCamera = 0;  // 使用的相机（0为第一人称相机，1为自由视角相机）
+std::vector<AABB> AABBs;
 
 
 HRESULT InitWindow(HINSTANCE hInstance, int nCmdShow);

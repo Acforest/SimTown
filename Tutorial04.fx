@@ -86,7 +86,8 @@ float4 PS_Lambertian_Shading(PS_INPUT input) : SV_Target
     {
         finalColor += saturate(dot(normalize((float3) vLightDir[i]), input.Norm) * vLightColor[i] * input.Color);
     }
-    finalColor.xyz += float3(0.2, 0.2, 0.2);
+    finalColor.xyz += float3(0.1, 0.1, 0.1);
+    finalColor = saturate(finalColor);
     // saturate(input.Color * vLightColor * dot(normalize((float3) vLightDir), input.Norm) + float4(0.1, 0.1, 0.1, 1.0));
 	finalColor.a = 1.0f;
     return finalColor;
@@ -103,7 +104,7 @@ float4 PS_Blinn_Phong_Shading(PS_INPUT input) : SV_Target
         float3 bisector = normalize((float3) (normalize(vCamera - input.PosW) + vLightDir[i])); // 相机视方向与光线方向的二分线
         finalColor += input.Color * vLightColor[i] * max(dot(normalize((float3) vLightDir[i]), input.Norm), 0) + sc * vLightColor[i] * pow(max(dot(bisector, input.Norm), 0), x);
     }
-    finalColor = saturate(finalColor + float4(0.2f, 0.2f, 0.2f, 0.0f));
+    finalColor = saturate(finalColor + float4(0.02f, 0.02f, 0.02f, 0.0f));
     finalColor.a = 1.0f;
     return finalColor;
 }
