@@ -19,7 +19,6 @@ struct VS_INPUT
 {
     float4 Pos : POSITION;
     float3 Norm : NORMAL;
-    float4 Color : COLOR;
     float2 Tex : TEXCOORD;
 };
 
@@ -29,7 +28,6 @@ struct PS_INPUT
     float4 PosW : POSITION0;
     float4 PosL : POSITION1;
     float3 Norm : NORMAL;
-    float4 Color : COLOR;
     float2 Tex : TEXCOORD;
 };
 
@@ -45,7 +43,6 @@ PS_INPUT VS(VS_INPUT input)
     output.PosW = mul(input.Pos, World);
     output.PosL = input.Pos;
     output.Norm = mul(input.Norm, (float3x4) World);
-    output.Color = input.Color;
     output.Tex = input.Tex;
     return output;
 }
@@ -69,42 +66,32 @@ PS_INPUT Sky_VS(VS_INPUT input)
 //--------------------------------------------------------------------------------------
 float4 PS_Ambient_Shading(PS_INPUT input) : SV_Target
 {
-    float4 finalColor = 0.0f;
-    for (int i = 0; i < 3; i++)
-    {
-        finalColor += saturate(dot(normalize((float3) vLightDir[i]), input.Norm) * vLightColor[i] * input.Color);
-    }
-    finalColor = saturate(finalColor);
-    finalColor.a = 1.0f;
-    return finalColor;
+    return mColor;
 }
 
 float4 PS_Lambertian_Shading(PS_INPUT input) : SV_Target
 {
-    float4 finalColor = 0.0f;
+    float4 finalColor = { 0.0f, 0.0f, 0.0f, 1.0f };
     for (int i = 0; i < 3; i++)
     {
-        finalColor += saturate(dot(normalize((float3) vLightDir[i]), input.Norm) * vLightColor[i] * input.Color);
+        finalColor += saturate(dot(normalize((float3) vLightDir[i]), input.Norm) * vLightColor[i] * mColor);
     }
-    finalColor.xyz += float3(0.1, 0.1, 0.1);
     finalColor = saturate(finalColor);
-    // saturate(input.Color * vLightColor * dot(normalize((float3) vLightDir), input.Norm) + float4(0.1, 0.1, 0.1, 1.0));
 	finalColor.a = 1.0f;
     return finalColor;
 }
 
 float4 PS_Blinn_Phong_Shading(PS_INPUT input) : SV_Target
 {
-    float4 finalColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
-    
-    int x = 5;  // 高光指数
-    float4 sc = { 1.0f, 1.0f, 1.0f, 1.0f }; // 高光颜色
+    float4 finalColor = 0.0f;
     for (int i = 0; i < 3; i++)
     {
         float3 bisector = normalize((float3) (normalize(vCamera - input.PosW) + vLightDir[i])); // 相机视方向与光线方向的二分线
-        finalColor += input.Color * vLightColor[i] * max(dot(normalize((float3) vLightDir[i]), input.Norm), 0) + sc * vLightColor[i] * pow(max(dot(bisector, input.Norm), 0), x);
+        int x = 5; // 高光指数
+        float4 sc = { 1.0f, 1.0f, 1.0f, 1.0f }; // 高光颜色
+        finalColor += mColor * vLightColor[i] * max(dot(normalize((float3) vLightDir[i]), input.Norm), 0) + sc * vLightColor[i] * pow(max(dot(bisector, input.Norm), 0), x);
     }
-    finalColor = saturate(finalColor + float4(0.02f, 0.02f, 0.02f, 0.0f));
+    finalColor = saturate(finalColor);
     finalColor.a = 1.0f;
     return finalColor;
 }
@@ -135,12 +122,13 @@ float4 PS_Toon_Shading(PS_INPUT input) : SV_Target
 
 float4 PS_Texture_Mapping(PS_INPUT input) : SV_Target
 {
+    float4 finalColor = { 0.0f, 0.0f, 0.0f, 1.0f };
     float4 tex_color = txDiffuse.Sample(samLinear, input.Tex);
-    float4 finalColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
     for (int i = 0; i < 3; i++)
     {
         finalColor += saturate(tex_color * dot(normalize((float3) vLightDir[i]), input.Norm));
     }
+    finalColor = saturate(finalColor);
     finalColor.a = 1.0f;
     return finalColor;
 }

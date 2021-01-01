@@ -340,13 +340,13 @@ namespace AssimpModel
         g_pImmediateContext->IASetIndexBuffer(g_pIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
         for (int i = 0; i < models.size(); i++) {
             if (models[i]->mName == modelName) {
-                for (int j = 0; j < models[i]->meshIndexOffset.size(); j++) {
+                for (int j = 0; j < models[i]->meshIndexOffset.size() - 1; j++) {
                     m_pConstantBuffer.mWorld = XMMatrixTranspose(m_pWorld);
-                    m_pConstantBuffer.mColor = models[i]->mColors[0];
+                    m_pConstantBuffer.mColor = models[i]->mColors[j];
                     g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, NULL, &cb, 0, 0);
                     g_pImmediateContext->VSSetShader(g_pVertexShader, NULL, 0);
                     g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
-                    g_pImmediateContext->PSSetShader(g_pPixelShaders[2], NULL, 0);
+                    g_pImmediateContext->PSSetShader(g_pPixelShaders[0], NULL, 0);
                     g_pImmediateContext->PSSetConstantBuffers(0, 1, &g_pConstantBuffer);
                     g_pImmediateContext->PSSetShaderResources(1, 1, &g_pTextureRV);
                     g_pImmediateContext->PSSetSamplers(0, 1, &g_pSamplerLinear);
@@ -600,8 +600,8 @@ HRESULT InitDevice()
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
         { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 40, D3D11_INPUT_PER_VERTEX_DATA, 0 }
     };
     UINT numElements = ARRAYSIZE(layout);
 
@@ -613,7 +613,7 @@ HRESULT InitDevice()
         return hr;
 
     // º”‘ÿShader
-    char* shaders[5] = { "PS_Lambertian_Shading", "PS_Lambertian_Shading", "PS_Blinn_Phong_Shading", "PS_Lambertian_Shading", "PS_Texture_Mapping" };
+    char* shaders[5] = { "PS_Ambient_Shading", "PS_Lambertian_Shading", "PS_Blinn_Phong_Shading", "PS_Toon_Shading", "PS_Texture_Mapping" };
     LoadShader(shaders[0], 0);
     LoadShader(shaders[1], 1);
     LoadShader(shaders[2], 2);
@@ -812,7 +812,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     PAINTSTRUCT ps;
     HDC hdc;
-    // Input::GetInstance()->Listen(message, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // º‡Ã˝º¸ Û
     m_pKeyboard->ProcessMessage(message, wParam, lParam); // º‡Ã˝º¸≈Ã
     m_pMouse->ProcessMessage(message, wParam, lParam);    // º‡Ã˝ Û±Í
 
@@ -963,7 +962,7 @@ void Render()
     };
     static bool setAABB = false;
     float x_pos = 0;
-    for (int i = 0; i < models.size(); i++, x_pos += 1000.0f) {
+    for (int i = 0; i < models.size(); i++, x_pos += 500.0f) {
         XMMATRIX mWorld = XMMatrixScaling(5.0f, 5.0f, 5.0f) * XMMatrixTranslation(x_pos, 0, 500.0f);
         if (setAABB == false) {
             AABB aabbBox;
@@ -985,7 +984,7 @@ void Render()
     }
     setAABB = true;
     ConstantBuffer tcb;
-    tcb.mWorld = XMMatrixTranslation(0, 0, 0) * XMMatrixScaling(1, 0, 1);
+    tcb.mWorld = XMMatrixTranslation(0, 0, 0) * XMMatrixScaling(1, 1, 1);
     tcb.mView = XMMatrixTranspose(g_View);
     tcb.mProjection = XMMatrixTranspose(g_Projection);
     tcb.vLightDir[0] = vLightDirs[0];
