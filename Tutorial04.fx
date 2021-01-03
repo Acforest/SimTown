@@ -54,14 +54,13 @@ PS_INPUT VS(VS_INPUT input)
 PS_INPUT Sky_VS(VS_INPUT input)
 {
     PS_INPUT output;
-    float4 g_WorldViewProj;
-    g_WorldViewProj = mul(input.Pos, World);
-    g_WorldViewProj = mul(g_WorldViewProj, View);
-    g_WorldViewProj = mul(g_WorldViewProj, Projection);
+    output.PosL = input.Pos;
+    output.PosH = mul(input.Pos, World);
+    output.PosH = mul(output.PosH, View);
+    output.PosH = mul(output.PosH, Projection);
     // 设置z = w使得z/w = 1(天空盒保持在远平面)
-    float4 posH = mul(input.Pos, g_WorldViewProj);
-    output.PosH = posH.xyww;
-    
+    output.PosH.z = output.PosH.w;
+    output.Tex = input.Tex;
     return output;
 }
 
@@ -70,9 +69,9 @@ PS_INPUT Sky_VS(VS_INPUT input)
 //--------------------------------------------------------------------------------------
 float4 PS_Ambient_Shading(PS_INPUT input) : SV_Target
 {
-    float2 shadowTexPos;
-    shadowTexPos.x = 0.5f * (input.PosH.x / input.PosH.w) + 0.5f;
-    shadowTexPos.y = 0.5f * (input.PosH.y / input.PosH.w) + 0.5f;
+    //input.ShadowPosH.xyz /= input.ShadowPosH.z;
+    //float depth = input.ShadowPosH.z;
+    //float4 color = float4(depthValue, depthValue, depthValue, 1.0f);
     return mColor;
 }
 
@@ -132,12 +131,12 @@ float4 PS_Texture_Mapping(PS_INPUT input) : SV_Target
 {
     float4 finalColor = { 0.0f, 0.0f, 0.0f, 1.0f };
     float4 tex_color = txDiffuse.Sample(samLinear, input.Tex);
-    //for (int i = 0; i < 3; i++)
-    //{
-    //    finalColor += saturate(tex_color * dot(normalize((float3) vLightDir[i]), input.Norm));
-    //}
-    //finalColor = saturate(finalColor);
-    //finalColor.a = 1.0f;
+    float2 shadowTex = float2(0.5f * input.PosH.x / input.PosH.w + 0.5f, -0.5f * input.PosH.y / input.PosH.w + 0.5f);
+    
+    if (saturate(shadowTex.x) == shadowTex.x && saturate(shadowTex.y) == shadowTex.y)
+    {
+        
+    }
     return tex_color * mColor;
 }
 

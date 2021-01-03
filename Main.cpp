@@ -192,6 +192,7 @@ void Terrain::BuildInputLayouts()
 
 void Terrain::Render(ConstantBuffer& cb, long vertex_offset, long index_offset)
 {
+    g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, g_pDepthStencilView);
     g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, NULL, &cb, 0, 0);
     g_pImmediateContext->VSSetShader(g_pVertexShader, NULL, 0);
     g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
@@ -235,9 +236,8 @@ namespace AssimpModel
             // 加载纹理
             if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
                 aiString Path;
-                if (material->GetTexture(aiTextureType_DIFFUSE, 0, &Path, NULL, NULL, NULL, NULL, NULL) == AI_SUCCESS) {
-                    model->mTextureNames.push_back(Path.C_Str());
-                }
+                material->GetTexture(aiTextureType_DIFFUSE, 0, &Path, NULL, NULL, NULL, NULL, NULL);
+                model->mTextureNames.push_back(Path.C_Str());
             }
             for (int j = 0; j < scene->mMeshes[i]->mNumVertices; j++) {
                 if (scene->mMeshes[i]->HasTextureCoords(0) && scene->mMeshes[i]->HasNormals()) {
@@ -319,6 +319,8 @@ namespace AssimpModel
         int index_offset = 0;
         // Set the input layout
         g_pImmediateContext->IASetInputLayout(g_pVertexLayout);
+        g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, g_pDepthStencilView);
+        g_pImmediateContext->OMSetDepthStencilState(g_pDSSNodepthWrite, 0);
         // 设置模型顶点缓冲区
         UINT stride = sizeof(SimpleVertex);
         UINT offset = 0;
@@ -548,7 +550,6 @@ HRESULT InitDevice()
     if (FAILED(hr))
         return hr;
 
-    g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, NULL);
 
     // Create depth stencil texture
     D3D11_TEXTURE2D_DESC descDepth;
@@ -625,12 +626,13 @@ HRESULT InitDevice()
         return hr;
 
     // 加载Shader
-    char* shaders[5] = { "PS_Ambient_Shading", "PS_Lambertian_Shading", "PS_Blinn_Phong_Shading", "PS_Toon_Shading", "PS_Texture_Mapping" };
+    char* shaders[] = { "PS_Ambient_Shading", "PS_Lambertian_Shading", "PS_Blinn_Phong_Shading", "PS_Toon_Shading", "PS_Texture_Mapping", "PS_Sky_Texture" };
     LoadShader(shaders[0], 0);
     LoadShader(shaders[1], 1);
     LoadShader(shaders[2], 2);
     LoadShader(shaders[3], 3);
     LoadShader(shaders[4], 4);
+    LoadShader(shaders[5], 5);
     // 创建第一人称相机
     m_pFirstPersonCamera = new FirstPersonCamera(Eye, At, Up, XMVector4Normalize(XMVector3Cross(Up, At)));
     // 创建自由视角相机
@@ -648,7 +650,8 @@ HRESULT InitDevice()
     modelWorlds.push_back(XMMatrixScaling(10.0f, 10.0f, 10.0f) * XMMatrixTranslation(-500.0f, 0.0f, 500.0f) * XMMatrixRotationY(0.0f)); // park
     modelWorlds.push_back(XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixTranslation(500.0f, 0.0f, 300.0f) * XMMatrixRotationY(0.0f)); // police
     modelWorlds.push_back(XMMatrixScaling(5.0f, 5.0f, 5.0f) * XMMatrixTranslation(500.0f, 0.0f, 100.0f) * XMMatrixRotationY(0.0f)); // shop
-    modelWorlds.push_back(XMMatrixScaling(5.0f, 5.0f, 5.0f) * XMMatrixTranslation(500.0f, 2.0f, -100.0f) * XMMatrixRotationY(0.0f)); // car
+    treeAABB.SetAABB(XMMatrixScaling(5.0f, 5.0f, 5.0f) * XMMatrixTranslation(500.0f, 0.0f, 100.0f) * XMMatrixRotationY(0.0f), models[9]);
+    modelWorlds.push_back(XMMatrixScaling(10.0f, 10.0f, 10.0f) * XMMatrixTranslation(0.0f, 0.0f, 0.0f) * XMMatrixRotationY(0.0f)); // car
     modelWorlds.push_back(XMMatrixScaling(5.0f, 1.0f, 1.0f) * XMMatrixTranslation(0.0f, 0.0f, -700.0f) * XMMatrixRotationY(0.0f)); // tree
     modelWorlds.push_back(XMMatrixScaling(5.0f, 5.0f, 5.0f) * XMMatrixTranslation(0.0f, 0.0f, -900.0f) * XMMatrixRotationY(0.0f)); // tree2
     modelWorlds.push_back(XMMatrixScaling(50.0f, 50.0f, 50.0f) * XMMatrixTranslation(0.0f, 0.0f, 0.0f) * XMMatrixRotationY(0.0f)); // terrain
@@ -675,20 +678,11 @@ HRESULT InitDevice()
     mTextureRVs.push_back(SRV6); mTextureNames.push_back("StreetLine.jpg");
     mTextureRVs.push_back(SRV7); mTextureNames.push_back("StreetT.jpg");
     mTextureRVs.push_back(SRV8); mTextureNames.push_back("tile_wood.jpg");
-    mTextureRVs.push_back(SRV13); mTextureNames.push_back("tree_texture.jpg");
-    mTextureRVs.push_back(SRV9); mTextureNames.push_back("M61501.dds");
-    mTextureRVs.push_back(SRV10); mTextureNames.push_back("M61501_n.dds");
-    mTextureRVs.push_back(SRV11); mTextureNames.push_back("M61501_s.dds");
-    mTextureRVs.push_back(SRV12); mTextureNames.push_back("male_diffuse_white_med-facial.jpg");
-
-    //ID3D11ShaderResourceView *x_pos, *x_neg, *y_pos, *y_neg, *z_pos, *z_neg;
-    //D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"models/texture/M61501_s.dds", NULL, NULL, &x_pos, NULL);
-    //D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"models/texture/M61501_s.dds", NULL, NULL, &x_neg, NULL);
-    //D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"models/texture/M61501_s.dds", NULL, NULL, &y_pos, NULL);
-    //D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"models/texture/M61501_s.dds", NULL, NULL, &y_neg, NULL);
-    //D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"models/texture/M61501_s.dds", NULL, NULL, &z_pos, NULL);
-    //D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"models/texture/M61501_s.dds", NULL, NULL, &z_neg, NULL);
-    
+    mTextureRVs.push_back(SRV9); mTextureNames.push_back("tree_texture.jpg");
+    mTextureRVs.push_back(SRV10); mTextureNames.push_back("M61501.dds");
+    mTextureRVs.push_back(SRV11); mTextureNames.push_back("M61501_n.dds");
+    mTextureRVs.push_back(SRV12); mTextureNames.push_back("M61501_s.dds");
+    mTextureRVs.push_back(SRV13); mTextureNames.push_back("male_diffuse_white_med-facial.jpg");
     
     for (int i = 0; i < models.size(); i++) {
         AABB aabb;
@@ -723,23 +717,91 @@ HRESULT InitDevice()
     m_pTerrain->vertex_offset = vertex_offset;
     m_pTerrain->index_offset = index_offset;
 
+    int levels = 20, slices = 20, radius = 100;
+    // 创建天空球的顶点数据和索引数据（逆时针绘制）
+    UINT vertexCount = 2 + (levels - 1) * (slices + 1);
+    UINT indexCount = 6 * (levels - 1) * slices;
+    skyVertices.resize(vertexCount);
+    skyIndices.resize(indexCount);
+    SimpleVertex vertexData;
+    UINT vIndex = 0, iIndex = 0;
+    float phi = 0.0f, theta = 0.0f;
+    float per_phi = XM_PI / levels;
+    float per_theta = XM_2PI / slices;
+    float x, y, z;
+    // 放入顶端点
+    vertexData = { XMFLOAT3(0.0f, radius, 0.0f), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 0.0f) };
+    skyVertices[vIndex++] = vertexData;
+    for (UINT i = 1; i < levels; ++i)
+    {
+        phi = per_phi * i;
+        // 需要slices + 1个顶点是因为 起点和终点需为同一点，但纹理坐标值不一致
+        for (UINT j = 0; j <= slices; ++j)
+        {
+            theta = per_theta * j;
+            x = radius * sinf(phi) * cosf(theta);
+            y = radius * cosf(phi);
+            z = radius * sinf(phi) * sinf(theta);
+            // 计算出局部坐标、法向量、Tangent向量和纹理坐标
+            XMFLOAT3 pos = XMFLOAT3(x, y, z), normal;
+            XMStoreFloat3(&normal, XMVector3Normalize(XMLoadFloat3(&pos)));
+            vertexData = { pos, normal, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), XMFLOAT2(theta / XM_2PI, phi / XM_PI) };
+            skyVertices[vIndex++] = { XMFLOAT3(x, y, z),  };
+        }
+    }
+    // 放入底端点
+    vertexData = { XMFLOAT3(0.0f, -radius, 0.0f), XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), XMFLOAT2(0.0f, 1.0f) };
+    skyVertices[vIndex++] = vertexData;
+    // 放入索引
+    if (levels > 1)
+    {
+        for (UINT j = 1; j <= slices; ++j)
+        {
+            skyIndices[iIndex++] = 0;
+            skyIndices[iIndex++] = j;
+            skyIndices[iIndex++] = j % (slices + 1) + 1;
+        }
+    }
+    for (UINT i = 1; i < levels - 1; ++i)
+    {
+        for (UINT j = 1; j <= slices; ++j)
+        {
+            skyIndices[iIndex++] = (i - 1) * (slices + 1) + j;
+            skyIndices[iIndex++] = i * (slices + 1) + j % (slices + 1) + 1;
+            skyIndices[iIndex++] = (i - 1) * (slices + 1) + j % (slices + 1) + 1;
+
+            skyIndices[iIndex++] = i * (slices + 1) + j % (slices + 1) + 1;
+            skyIndices[iIndex++] = (i - 1) * (slices + 1) + j;
+            skyIndices[iIndex++] = i * (slices + 1) + j;
+        }
+    }
+    if (levels > 1)
+    {
+        for (UINT j = 1; j <= slices; ++j)
+        {
+            skyIndices[iIndex++] = (levels - 2) * (slices + 1) + j;
+            skyIndices[iIndex++] = (levels - 1) * (slices + 1) + 1;
+            skyIndices[iIndex++] = (levels - 2) * (slices + 1) + j % (slices + 1) + 1;
+        }
+    }
+
     D3D11_SUBRESOURCE_DATA InitData;
+
     // 天空盒顶点缓冲区描述
-    /*D3D11_BUFFER_DESC vbd;
+    D3D11_BUFFER_DESC vbd;
     ZeroMemory(&vbd, sizeof(vbd));
-    vbd.Usage = D3D11_USAGE_IMMUTABLE;
+    vbd.Usage = D3D11_USAGE_DEFAULT;
     vbd.ByteWidth = sizeof(SimpleVertex) * skyVertices.size();
     vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     vbd.CPUAccessFlags = 0;
     // 创建天空盒顶点缓冲区
-    D3D11_SUBRESOURCE_DATA InitData;
     ZeroMemory(&InitData, sizeof(InitData));
     InitData.pSysMem = &skyVertices[0];
     g_pd3dDevice->CreateBuffer(&vbd, &InitData, &g_pSkyVertexBuffer);
     // 天空盒索引缓冲区描述
     D3D11_BUFFER_DESC ibd;
     ZeroMemory(&ibd, sizeof(ibd));
-    ibd.Usage = D3D11_USAGE_IMMUTABLE;
+    ibd.Usage = D3D11_USAGE_DEFAULT;
     ibd.ByteWidth = sizeof(WORD) * skyIndices.size();
     ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
     ibd.CPUAccessFlags = 0;
@@ -750,19 +812,27 @@ HRESULT InitDevice()
     // 常量缓冲区描述
     D3D11_BUFFER_DESC cbd;
     ZeroMemory(&cbd, sizeof(cbd));
-    cbd.Usage = D3D11_USAGE_DYNAMIC;
+    cbd.Usage = D3D11_USAGE_DEFAULT;
     cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    //cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     cbd.ByteWidth = sizeof(ConstantBuffer);
     g_pd3dDevice->CreateBuffer(&cbd, nullptr, &g_pSkyConstantBuffer);
-    // 允许使用深度值一致的像素进行替换的深度/模板状态
-    // 该状态用于绘制天空盒，因为深度值为1.0时默认无法通过深度测试
+
     D3D11_DEPTH_STENCIL_DESC dsDesc;
+    // 一般深度状态
     dsDesc.DepthEnable = true;
     dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-    dsDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+    dsDesc.DepthFunc = D3D11_COMPARISON_LESS; // less
     dsDesc.StencilEnable = false;
-    g_pd3dDevice->CreateDepthStencilState(&dsDesc, g_pDSS);
+    g_pd3dDevice->CreateDepthStencilState(&dsDesc, &g_pDSSNodepthWrite);
+    // 允许使用深度值一致的像素进行替换的深度/模板状态
+    // 该状态用于绘制天空盒，因为深度值为1.0时默认无法通过深度测试
+    dsDesc.DepthEnable = true;
+    dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+    dsDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL; // less equal
+    dsDesc.StencilEnable = false;
+    g_pd3dDevice->CreateDepthStencilState(&dsDesc, &g_pDSSLessEqual);
+
     g_pTextureCubeSRVs.resize(6);
     D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"models/texture/sunset_posX.bmp", NULL, NULL, &g_pTextureCubeSRVs[0], NULL);
     D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"models/texture/sunset_posY.bmp", NULL, NULL, &g_pTextureCubeSRVs[1], NULL);
@@ -770,6 +840,7 @@ HRESULT InitDevice()
     D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"models/texture/sunset_negX.bmp", NULL, NULL, &g_pTextureCubeSRVs[3], NULL);
     D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"models/texture/sunset_negY.bmp", NULL, NULL, &g_pTextureCubeSRVs[4], NULL);
     D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"models/texture/sunset_negZ.bmp", NULL, NULL, &g_pTextureCubeSRVs[5], NULL);
+    D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"models/texture/desertcube.dds", NULL, NULL, &g_pTextureSkySRV, NULL);
     // 编译天空盒顶点Shader
     pVSBlob = NULL;
     hr = CompileShaderFromFile(L"Tutorial04.fx", "Sky_VS", "vs_4_0", &pVSBlob);
@@ -785,7 +856,8 @@ HRESULT InitDevice()
     {
         pVSBlob->Release();
         return hr;
-    }*/
+    }
+
 
     // 模型顶点缓冲区描述
     D3D11_BUFFER_DESC bd;
@@ -902,6 +974,54 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
+// sp 线起点 
+// sq 线终点
+// amin amax  表示 AABB包围盒 X, Y, Z 轴坐标的 最小 最大值
+static float tmin, tmax;
+static bool isectSegAABB(XMFLOAT4 &eye, XMFLOAT4 &target,
+    XMFLOAT3 &min, XMFLOAT3 &max,
+    float& tmin, float& tmax)
+{
+    static const float EPS = 1e-6f;
+    float sp[3] = { eye.x, eye.y, eye.z };
+    float sq[3] = { target.x, target.y, target.z };
+    float amin[3] = { min.x, min.y, min.z };
+    float amax[3] = { max.x, max.y, max.z };
+    // 视线方向
+    float d[3];
+    d[0] = target.x - eye.x;
+    d[1] = target.y - eye.y;
+    d[2] = target.z - eye.z;
+    // 因为是线段 所以参数t取值在0和1之间
+    tmin = 0.0;
+    tmax = 1.0f;
+
+    for (int i = 0; i < 3; i++)
+    {
+        // 如果视线某一个轴分量为0，且在包围盒这个轴分量之外，那么直接判定不相交 
+        if (fabsf(d[i]) < EPS)
+        {
+            if (sp[i] < amin[i] || sp[i] > amax[i])
+                return false;
+        }
+        else
+        {
+            const float ood = 1.0f / d[i];
+            // 计算参数t 并令 t1为较小值 t2为较大值
+            float t1 = (amin[i] - sp[i]) * ood;
+            float t2 = (amax[i] - sp[i]) * ood;
+            if (t1 > t2) { float tmp = t1; t1 = t2; t2 = tmp; }
+
+            if (t1 > tmin) tmin = t1;
+            if (t2 < tmax) tmax = t2;
+
+            // 判定不相交
+            if (tmin > tmax) return false;
+        }
+    }
+    return true;
+}
+
 //--------------------------------------------------------------------------------------
 // Render a frame
 //--------------------------------------------------------------------------------------
@@ -1015,7 +1135,9 @@ void Render()
             m_pFreeLookCamera->Yaw(mouseState.x * 0.005f);
         }
         if (mouseState.leftButton) {
-            
+            if (isectSegAABB(vCamera, vTarget, treeAABB.MinPos, treeAABB.MaxPos, tmin, tmax)) {
+                m_pFirstPersonCamera->Jump();
+            }
         }
     }
     //
@@ -1028,6 +1150,7 @@ void Render()
     // Clear the depth buffer to 1.0 (max depth)
     //
     g_pImmediateContext->ClearDepthStencilView(g_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
 
     XMFLOAT4 vLightDirs[3] =
     {
@@ -1068,6 +1191,24 @@ void Render()
     tcb.vLightColor[1] = vLightColors[1];
     tcb.vLightColor[2] = vLightColors[2];
     m_pTerrain->Render(tcb, m_pTerrain->vertex_offset, m_pTerrain->index_offset);*/
+
+    UINT stride = sizeof(SimpleVertex);
+    UINT offset = 0;
+    cb.mWorld = XMMatrixTranspose(XMMatrixIdentity());
+    cb.mView = XMMatrixTranspose(g_View);
+    cb.mProjection = XMMatrixTranspose(g_Projection);
+    cb.vCamera = vCamera;
+    cb.vTarget = vTarget;
+    g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pSkyVertexBuffer, &stride, &offset);
+    g_pImmediateContext->IASetIndexBuffer(g_pSkyIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+    g_pImmediateContext->OMSetDepthStencilState(g_pDSSLessEqual, 0);
+    g_pImmediateContext->UpdateSubresource(g_pSkyConstantBuffer, 0, NULL, &cb, 0, 0);
+    g_pImmediateContext->VSSetShader(g_pSkyVertexShader, NULL, 0);
+    g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pSkyConstantBuffer);
+    g_pImmediateContext->PSSetShader(g_pPixelShaders[5], NULL, 0);
+    g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureSkySRV);
+    g_pImmediateContext->PSSetConstantBuffers(0, 1, &g_pSkyConstantBuffer);
+    g_pImmediateContext->DrawIndexed(skyIndices.size(), 0, 0);
     //
     // Present our back buffer to our front buffer
     //

@@ -40,7 +40,6 @@ ID3D11Buffer*               g_pIndexBuffer = NULL;
 ID3D11Buffer*               g_pConstantBuffer = NULL;
 ID3D11ShaderResourceView*   g_pTextureRV = NULL;
 ID3D11SamplerState*         g_pSamplerLinear = NULL;
-ID3D11DepthStencilState**   g_pDSS;  // 天空盒深度状态DSS
 XMMATRIX                    g_World;
 XMMATRIX                    g_View;
 XMMATRIX                    g_Projection;
@@ -49,20 +48,25 @@ ID3D11ShaderResourceView*   m_pTexture = NULL;
 FirstPersonCamera*          m_pFirstPersonCamera = NULL; // 第一人称相机指针
 FreeLookCamera*				m_pFreeLookCamera = NULL; // 第一人称相机指针
 Terrain*					m_pTerrain; // 地形指针
+ID3D11DepthStencilState*    g_pDSSNodepthWrite;  // 普通深度状态
+
 ID3D11Buffer*				g_pSkyVertexBuffer = NULL;
 ID3D11Buffer*				g_pSkyIndexBuffer = NULL;
 ID3D11Buffer*				g_pSkyConstantBuffer = NULL;
 ID3D11VertexShader*			g_pSkyVertexShader = NULL;
+ID3D11ShaderResourceView*   g_pTextureSkySRV = NULL;
+ID3D11DepthStencilState*    g_pDSSLessEqual;  // 天空盒深度状态
 std::vector<ID3D11ShaderResourceView* >	g_pTextureCubeSRVs; // 天空盒SRV
+std::vector<SimpleVertex>           skyVertices; // 天空盒顶点
+std::vector<WORD>                   skyIndices;  // 天空盒索引
 
 std::vector<Model*>                 models; // 存放加载的所有模型
-std::vector<ID3D11PixelShader*>     g_pPixelShaders(5, NULL);   // 存放加载的所有 Pixel Shader
+std::vector<ID3D11PixelShader*>     g_pPixelShaders(6, NULL);   // 存放加载的所有 Pixel Shader
 std::vector<XMMATRIX>               m_Worlds; // 存放所有加载的模型的世界矩阵
 std::unique_ptr<DirectX::Keyboard>  m_pKeyboard = std::make_unique<DirectX::Keyboard>(); // 键盘单例
 std::unique_ptr<DirectX::Mouse>     m_pMouse = std::make_unique<DirectX::Mouse>(); // 鼠标单例
 DirectX::Mouse::ButtonStateTracker  m_MouseTracker; // 鼠标状态追踪
-std::vector<SimpleVertex>           skyVertices; // 天空盒顶点
-std::vector<WORD>                   skyIndices;  // 天空盒索引
+
 XMVECTOR Eye = XMVectorSet(0.0f, 10.0f, 0.0f, 0.0f);
 XMVECTOR At = XMVectorSet(0.0f, 0.0f, 5.0f, 0.0f);
 XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
@@ -74,6 +78,8 @@ std::vector<AABB> AABBs;
 std::vector<XMMATRIX> modelWorlds; // 存放模型所有世界矩阵
 std::vector<std::string> mTextureNames;
 std::vector<ID3D11ShaderResourceView* > mTextureRVs;
+
+AABB treeAABB;
 
 
 HRESULT InitWindow(HINSTANCE hInstance, int nCmdShow);
