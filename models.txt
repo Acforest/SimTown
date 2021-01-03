@@ -9,10 +9,6 @@ park		models/buildings/park.obj
 police		models/buildings/police.obj
 shop		models/buildings/shop.obj
 car		models/cars/car.obj
-street_corner	models/street_tile/street_corner.obj
-street_cross	models/street_tile/street_cross.obj
-street_end	models/street_tile/street_end.obj
-street_line		models/street_tile/street_line.obj
-street_T		models/street_tile/street_T.obj
 tree		models/trees/tree.obj
 tree2		models/trees/tree2.obj
+terrain		models/terrain/demo5.obj

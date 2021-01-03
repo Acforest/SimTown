@@ -63,13 +63,17 @@ std::unique_ptr<DirectX::Mouse>     m_pMouse = std::make_unique<DirectX::Mouse>(
 DirectX::Mouse::ButtonStateTracker  m_MouseTracker; // 鼠标状态追踪
 std::vector<SimpleVertex>           skyVertices; // 天空盒顶点
 std::vector<WORD>                   skyIndices;  // 天空盒索引
-XMVECTOR Eye = XMVectorSet(0.0f, 10.0f, -5.0f, 0.0f);
+XMVECTOR Eye = XMVectorSet(0.0f, 10.0f, 0.0f, 0.0f);
 XMVECTOR At = XMVectorSet(0.0f, 0.0f, 5.0f, 0.0f);
 XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 int mNumVertices = 0; // 总顶点数
 int mNumIndices = 0;  // 总索引数
 bool mUsedCamera = 0;  // 使用的相机（0为第一人称相机，1为自由视角相机）
+bool mTexMode = 0;  // 无纹理模型的着色（0为使用原色，1为使用木制贴图）
 std::vector<AABB> AABBs;
+std::vector<XMMATRIX> modelWorlds; // 存放模型所有世界矩阵
+std::vector<std::string> mTextureNames;
+std::vector<ID3D11ShaderResourceView* > mTextureRVs;
 
 
 HRESULT InitWindow(HINSTANCE hInstance, int nCmdShow);

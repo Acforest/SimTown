@@ -31,9 +31,6 @@
     <ClCompile Include="Main.cpp">
       <Filter>Resource Files</Filter>
     </ClCompile>
-    <ClCompile Include="BoundingBox.cpp">
-      <Filter>通用文件</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Keyboard.h">
@@ -64,9 +61,6 @@
       <Filter>通用文件</Filter>
     </ClInclude>
     <ClInclude Include="Ray.h">
-      <Filter>通用文件</Filter>
-    </ClInclude>
-    <ClInclude Include="BoundingBox.h">
       <Filter>通用文件</Filter>
     </ClInclude>
     <ClInclude Include="FreeLookCamera.h">

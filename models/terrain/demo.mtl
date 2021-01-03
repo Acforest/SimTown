@@ -1,5 +1,5 @@
 # Blender MTL File: 'None'
-# Material Count: 8
+# Material Count: 12
 
 newmtl 09___Default
 Ns 10.000002
@@ -10,7 +10,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 1
-map_Kd E:\\Desktop\\DX11\\1\\SimTown\\models\\terrain\\StreetCorner.jpg
+map_Kd StreetCorner.jpg
 
 newmtl 09___Default.001
 Ns 10.000002
@@ -21,7 +21,18 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 1
-map_Kd E:\\Desktop\\DX11\\1\\SimTown\\models\\terrain\\StreetLine.jpg
+map_Kd StreetLine.jpg
+
+newmtl 09___Default.002
+Ns 10.000002
+Ka 1.000000 1.000000 1.000000
+Kd 0.160800 0.160800 0.113700
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd StreetCrossing.jpg
 
 newmtl 09___Default.003
 Ns 10.000002
@@ -32,7 +43,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 1
-map_Kd E:\\Desktop\\DX11\\1\\SimTown\\models\\terrain\\StreetEnd.jpg
+map_Kd StreetEnd.jpg
 
 newmtl 09___Default.004
 Ns 10.000002
@@ -43,7 +54,40 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.500000
 d 1.000000
 illum 1
-map_Kd E:\\Desktop\\DX11\\1\\SimTown\\models\\terrain\\StreetEnd.jpg
+map_Kd StreetEnd.jpg
+
+newmtl 09___Default.005
+Ns 10.000002
+Ka 1.000000 1.000000 1.000000
+Kd 0.160800 0.160800 0.113700
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd StreetT.jpg
+
+newmtl 09___Default.007
+Ns 10.000002
+Ka 1.000000 1.000000 1.000000
+Kd 0.160800 0.160800 0.113700
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd StreetLine.jpg
+
+newmtl 09___Default.008
+Ns 10.000002
+Ka 1.000000 1.000000 1.000000
+Kd 0.160800 0.160800 0.113700
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd StreetLine.jpg
 
 newmtl Material_#26
 Ns 18.000005
@@ -54,7 +98,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.450000
 d 1.000000
 illum 1
-map_Kd E:\\Desktop\\DX11\\1\\SimTown\\models\\male_02\\Textures\\male_diffuse_white_med-facial.jpg
+map_Kd male_diffuse_white_med-facial.jpg
 
 newmtl Material_1
 Ns 7.999999
@@ -65,7 +109,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.450000
 d 1.000000
 illum 1
-map_Kd E:\\Desktop\\DX11\\1\\SimTown\\models\\BunnyLoli\\M61501.dds
+map_Kd M61501.dds
 
 newmtl Material_2
 Ns 7.999999
@@ -76,7 +120,7 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.450000
 d 1.000000
 illum 1
-map_Kd E:\\Desktop\\DX11\\1\\SimTown\\models\\BunnyLoli\\M61501.dds
+map_Kd M61501.dds
 
 newmtl grass
 Ns 225.000000
@@ -87,4 +131,4 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
-map_Kd E:\\Desktop\\DX11\\1\\SimTown\\models\\terrain\\grass.png
+map_Kd grass.png

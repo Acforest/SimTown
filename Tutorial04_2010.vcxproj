@@ -372,7 +372,6 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="BoundingBox.cpp" />
     <ClCompile Include="Keyboard.cpp" />
     <ClCompile Include="Mouse.cpp" />
     <ClCompile Include="Main.cpp" />
@@ -382,7 +381,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AssimpModel.h" />
-    <ClInclude Include="BoundingBox.h" />
     <ClInclude Include="FirstPersonCamera.h" />
     <ClInclude Include="Helper.h" />
     <ClInclude Include="Keyboard.h" />

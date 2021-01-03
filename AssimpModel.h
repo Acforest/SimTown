@@ -40,7 +40,8 @@ struct ConstantBuffer
     XMFLOAT4 vLightDir[3];      // 光线方向
     XMFLOAT4 vLightColor[3];    // 光线颜色
     XMFLOAT4 vCamera;           // 相机位置
-    XMFLOAT4 mColor;
+    XMFLOAT4 vTarget;           // 看的位置
+    XMFLOAT4 mColor;            // 漫反射颜色
 };
 
 // 模型
@@ -54,6 +55,7 @@ struct Model
     SimpleVertex* vertices; // 顶点内存
     WORD* indices;          // 索引内存
     std::vector<XMFLOAT4> mColors;
+    std::vector<std::string> mTextureNames;
     std::vector<int> meshVertexOffset;
     std::vector<int> meshIndexOffset;
 };

@@ -2,6 +2,7 @@
 // File: Tutorial04.fx
 TextureCube g_TexCube : register(t0);
 Texture2D txDiffuse : register(t1);
+Texture2D g_ShadowMap : register(t2);
 SamplerState samLinear : register(s0);
 
 cbuffer ConstantBuffer : register( b0 )
@@ -12,6 +13,7 @@ cbuffer ConstantBuffer : register( b0 )
     float4 vLightDir[3];
     float4 vLightColor[3];
     float4 vCamera;
+    float4 vTarget;
     float4 mColor;
 }
 
@@ -27,6 +29,7 @@ struct PS_INPUT
     float4 PosH : SV_POSITION;
     float4 PosW : POSITION0;
     float4 PosL : POSITION1;
+    float4 ShadowPosH : POSITION2;
     float3 Norm : NORMAL;
     float2 Tex : TEXCOORD;
 };
@@ -44,6 +47,7 @@ PS_INPUT VS(VS_INPUT input)
     output.PosL = input.Pos;
     output.Norm = mul(input.Norm, (float3x4) World);
     output.Tex = input.Tex;
+    //output.ShadowPosH = mul(output.PosW, );
     return output;
 }
 
@@ -66,6 +70,9 @@ PS_INPUT Sky_VS(VS_INPUT input)
 //--------------------------------------------------------------------------------------
 float4 PS_Ambient_Shading(PS_INPUT input) : SV_Target
 {
+    float2 shadowTexPos;
+    shadowTexPos.x = 0.5f * (input.PosH.x / input.PosH.w) + 0.5f;
+    shadowTexPos.y = 0.5f * (input.PosH.y / input.PosH.w) + 0.5f;
     return mColor;
 }
 
@@ -84,9 +91,10 @@ float4 PS_Lambertian_Shading(PS_INPUT input) : SV_Target
 float4 PS_Blinn_Phong_Shading(PS_INPUT input) : SV_Target
 {
     float4 finalColor = 0.0f;
+    float4 v = normalize(vTarget + vCamera);
     for (int i = 0; i < 3; i++)
     {
-        float3 bisector = normalize((float3) (normalize(vCamera - input.PosW) + vLightDir[i])); // 相机视方向与光线方向的二分线
+        float3 bisector = normalize((float3) (v + vLightDir[i])); // 相机视方向与光线方向的二分线
         int x = 5; // 高光指数
         float4 sc = { 1.0f, 1.0f, 1.0f, 1.0f }; // 高光颜色
         finalColor += mColor * vLightColor[i] * max(dot(normalize((float3) vLightDir[i]), input.Norm), 0) + sc * vLightColor[i] * pow(max(dot(bisector, input.Norm), 0), x);
@@ -124,13 +132,13 @@ float4 PS_Texture_Mapping(PS_INPUT input) : SV_Target
 {
     float4 finalColor = { 0.0f, 0.0f, 0.0f, 1.0f };
     float4 tex_color = txDiffuse.Sample(samLinear, input.Tex);
-    for (int i = 0; i < 3; i++)
-    {
-        finalColor += saturate(tex_color * dot(normalize((float3) vLightDir[i]), input.Norm));
-    }
-    finalColor = saturate(finalColor);
-    finalColor.a = 1.0f;
-    return finalColor;
+    //for (int i = 0; i < 3; i++)
+    //{
+    //    finalColor += saturate(tex_color * dot(normalize((float3) vLightDir[i]), input.Norm));
+    //}
+    //finalColor = saturate(finalColor);
+    //finalColor.a = 1.0f;
+    return tex_color * mColor;
 }
 
 float4 PS_Sky_Texture(PS_INPUT input) : SV_Target

@@ -1,5 +1,5 @@
 # Blender MTL File: 'None'
-# Material Count: 8
+# Material Count: 12
 
 newmtl 09___Default
 Ns 10.000002
@@ -23,6 +23,17 @@ d 1.000000
 illum 1
 map_Kd E:\\Desktop\\DX11\\1\\SimTown\\models\\terrain\\StreetLine.jpg
 
+newmtl 09___Default.002
+Ns 10.000002
+Ka 1.000000 1.000000 1.000000
+Kd 0.160800 0.160800 0.113700
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd StreetCrossing.jpg
+
 newmtl 09___Default.003
 Ns 10.000002
 Ka 1.000000 1.000000 1.000000
@@ -44,6 +55,39 @@ Ni 1.500000
 d 1.000000
 illum 1
 map_Kd E:\\Desktop\\DX11\\1\\SimTown\\models\\terrain\\StreetEnd.jpg
+
+newmtl 09___Default.005
+Ns 10.000002
+Ka 1.000000 1.000000 1.000000
+Kd 0.160800 0.160800 0.113700
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd StreetT.jpg
+
+newmtl 09___Default.007
+Ns 10.000002
+Ka 1.000000 1.000000 1.000000
+Kd 0.160800 0.160800 0.113700
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd StreetLine.jpg
+
+newmtl 09___Default.008
+Ns 10.000002
+Ka 1.000000 1.000000 1.000000
+Kd 0.160800 0.160800 0.113700
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd StreetLine.jpg
 
 newmtl Material_#26
 Ns 18.000005
