@@ -54,6 +54,7 @@ PS_INPUT VS(VS_INPUT input)
 PS_INPUT Sky_VS(VS_INPUT input)
 {
     PS_INPUT output;
+    input.Pos.w = 1.0f;
     output.PosL = input.Pos;
     output.PosH = mul(input.Pos, World);
     output.PosH = mul(output.PosH, View);
@@ -129,7 +130,7 @@ float4 PS_Toon_Shading(PS_INPUT input) : SV_Target
 
 float4 PS_Texture_Mapping(PS_INPUT input) : SV_Target
 {
-    float4 finalColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+    float4 finalColor = { 1.0f, 1.0f, 1.0f, 1.0f };
     float4 tex_color = txDiffuse.Sample(samLinear, input.Tex);
     float2 shadowTex = float2(0.5f * input.PosH.x / input.PosH.w + 0.5f, -0.5f * input.PosH.y / input.PosH.w + 0.5f);
     

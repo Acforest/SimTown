@@ -40,6 +40,7 @@ ID3D11Buffer*               g_pIndexBuffer = NULL;
 ID3D11Buffer*               g_pConstantBuffer = NULL;
 ID3D11ShaderResourceView*   g_pTextureRV = NULL;
 ID3D11SamplerState*         g_pSamplerLinear = NULL;
+
 XMMATRIX                    g_World;
 XMMATRIX                    g_View;
 XMMATRIX                    g_Projection;
@@ -55,10 +56,12 @@ ID3D11Buffer*				g_pSkyIndexBuffer = NULL;
 ID3D11Buffer*				g_pSkyConstantBuffer = NULL;
 ID3D11VertexShader*			g_pSkyVertexShader = NULL;
 ID3D11ShaderResourceView*   g_pTextureSkySRV = NULL;
+ID3D11SamplerState*			g_pCubeSampler = NULL;
 ID3D11DepthStencilState*    g_pDSSLessEqual;  // 天空盒深度状态
 std::vector<ID3D11ShaderResourceView* >	g_pTextureCubeSRVs; // 天空盒SRV
 std::vector<SimpleVertex>           skyVertices; // 天空盒顶点
 std::vector<WORD>                   skyIndices;  // 天空盒索引
+
 
 std::vector<Model*>                 models; // 存放加载的所有模型
 std::vector<ID3D11PixelShader*>     g_pPixelShaders(6, NULL);   // 存放加载的所有 Pixel Shader

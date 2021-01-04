@@ -192,7 +192,14 @@ void Terrain::BuildInputLayouts()
 
 void Terrain::Render(ConstantBuffer& cb, long vertex_offset, long index_offset)
 {
+    UINT stride = sizeof(SimpleVertex);
+    UINT offset = 0;
+    g_pImmediateContext->IASetInputLayout(g_pVertexLayout);
     g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, g_pDepthStencilView);
+    g_pImmediateContext->OMSetDepthStencilState(g_pDSSNodepthWrite, 0);
+    g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, g_pDepthStencilView);
+    g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
+    g_pImmediateContext->IASetIndexBuffer(g_pIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
     g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, NULL, &cb, 0, 0);
     g_pImmediateContext->VSSetShader(g_pVertexShader, NULL, 0);
     g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
@@ -331,38 +338,49 @@ namespace AssimpModel
             if (models[i]->mName == modelName) {
                 for (int j = 0; j < models[i]->meshIndexOffset.size() - 1; j++) {
                     m_pConstantBuffer.mWorld = XMMatrixTranspose(m_pWorld);
-                    if (i != models.size() - 1) {
+                    //m_pConstantBuffer.mColor = models[i]->mColors[j];
+                    // 非地形
+                    if (i != 0) {
                         m_pConstantBuffer.mColor = models[i]->mColors[j];
                     }
+                    // 地形
                     else {
                         m_pConstantBuffer.mColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
                     }
                     g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, NULL, &cb, 0, 0);
                     g_pImmediateContext->VSSetShader(g_pVertexShader, NULL, 0);
                     g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
+                    // 无贴图
                     if (models[i]->mTextureNames.empty()) {
+                        // 无贴图模式
                         if (mTexMode == 0) {
                             g_pImmediateContext->PSSetShader(g_pPixelShaders[0], NULL, 0);
+                            g_pImmediateContext->PSSetConstantBuffers(0, 1, &g_pConstantBuffer);
                         }
+                        // 贴木制贴图
                         else {
                             g_pImmediateContext->PSSetShader(g_pPixelShaders[4], NULL, 0);
+                            g_pImmediateContext->PSSetConstantBuffers(0, 1, &g_pConstantBuffer);
+                            g_pImmediateContext->PSSetShaderResources(1, 1, &g_pTextureRV);
                         }
-                        g_pImmediateContext->PSSetConstantBuffers(0, 1, &g_pConstantBuffer);
-                        g_pImmediateContext->PSSetShaderResources(1, 1, &g_pTextureRV);
                     }
+                    // 有贴图
                     else {
+                        bool isFound = false;
                         for (int k = 0; k < mTextureNames.size(); k++) {
                             if (mTextureNames[k] == models[i]->mTextureNames[j]) {
+                                isFound = true;
+                                g_pImmediateContext->PSSetShader(g_pPixelShaders[4], NULL, 0);
+                                g_pImmediateContext->PSSetConstantBuffers(0, 1, &g_pConstantBuffer);
                                 g_pImmediateContext->PSSetShaderResources(1, 1, &mTextureRVs[k]);
                                 break;
                             }
                         }
-                        //std::vector<std::string>::iterator it = std::find(mTextureNames.begin(),
-                        //    mTextureNames.end(), models[i]->mTextureNames[j]);
-                        //if (it != mTextureNames.end()) {
-                        //    g_pImmediateContext->PSSetShaderResources(1, 1, &mTextureRVs[it - mTextureNames.begin()]);
-                        //}
-                        
+                        if (isFound == false) {
+                            g_pImmediateContext->PSSetShader(g_pPixelShaders[4], NULL, 0);
+                            g_pImmediateContext->PSSetConstantBuffers(0, 1, &g_pConstantBuffer);
+                            g_pImmediateContext->PSSetShaderResources(1, 1, &g_pTextureRV);
+                        }                  
                     }
                     g_pImmediateContext->PSSetSamplers(0, 1, &g_pSamplerLinear);
                     g_pImmediateContext->DrawIndexed(models[i]->meshIndexOffset[j], index_offset, vertex_offset); // 按索引数绘制图形
@@ -640,7 +658,8 @@ HRESULT InitDevice()
     // 加载模型
     AssimpModel::LoadModelsFromFile("models.txt", models);
 
-    modelWorlds.push_back(XMMatrixScaling(1.0f, 0.0f, 1.0f) * XMMatrixTranslation(1000.0f, 0.0f, 1500.0f) * XMMatrixRotationY(0.0f));// highschool
+    modelWorlds.push_back(XMMatrixScaling(50.0f, 50.0f, 50.0f) * XMMatrixTranslation(0.0f, 0.0f, 0.0f) * XMMatrixRotationY(0.0f)); // terrain
+    modelWorlds.push_back(XMMatrixScaling(5.0f, 5.0f, 5.0f) * XMMatrixTranslation(-500.0f, 0.0f, 1000.0f) * XMMatrixRotationY(0.0f));// highschool
     modelWorlds.push_back(XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixTranslation(1000.0f, 0.0f, 500.0f) * XMMatrixRotationY(0.0f)); // hospital
     modelWorlds.push_back(XMMatrixScaling(3.0f, 3.0f, 3.0f) * XMMatrixTranslation(1000.0f, 0.0f, 0.0f) * XMMatrixRotationY(0.0f)); // house1
     modelWorlds.push_back(XMMatrixScaling(3.0f, 3.0f, 3.0f) * XMMatrixTranslation(1000.0f, 0.0f, -500.0f) * XMMatrixRotationY(0.0f)); // house2
@@ -650,11 +669,11 @@ HRESULT InitDevice()
     modelWorlds.push_back(XMMatrixScaling(10.0f, 10.0f, 10.0f) * XMMatrixTranslation(-500.0f, 0.0f, 500.0f) * XMMatrixRotationY(0.0f)); // park
     modelWorlds.push_back(XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixTranslation(500.0f, 0.0f, 300.0f) * XMMatrixRotationY(0.0f)); // police
     modelWorlds.push_back(XMMatrixScaling(5.0f, 5.0f, 5.0f) * XMMatrixTranslation(500.0f, 0.0f, 100.0f) * XMMatrixRotationY(0.0f)); // shop
-    treeAABB.SetAABB(XMMatrixScaling(5.0f, 5.0f, 5.0f) * XMMatrixTranslation(500.0f, 0.0f, 100.0f) * XMMatrixRotationY(0.0f), models[9]);
+    //treeAABB.SetAABB(XMMatrixScaling(5.0f, 5.0f, 5.0f) * XMMatrixTranslation(500.0f, 0.0f, 100.0f) * XMMatrixRotationY(0.0f), models[0]);
     modelWorlds.push_back(XMMatrixScaling(10.0f, 10.0f, 10.0f) * XMMatrixTranslation(0.0f, 0.0f, 0.0f) * XMMatrixRotationY(0.0f)); // car
-    modelWorlds.push_back(XMMatrixScaling(5.0f, 1.0f, 1.0f) * XMMatrixTranslation(0.0f, 0.0f, -700.0f) * XMMatrixRotationY(0.0f)); // tree
+    modelWorlds.push_back(XMMatrixScaling(5.0f, 5.0f, 5.0f) * XMMatrixTranslation(0.0f, 0.0f, -700.0f) * XMMatrixRotationY(0.0f)); // tree
     modelWorlds.push_back(XMMatrixScaling(5.0f, 5.0f, 5.0f) * XMMatrixTranslation(0.0f, 0.0f, -900.0f) * XMMatrixRotationY(0.0f)); // tree2
-    modelWorlds.push_back(XMMatrixScaling(50.0f, 50.0f, 50.0f) * XMMatrixTranslation(0.0f, 0.0f, 0.0f) * XMMatrixRotationY(0.0f)); // terrain
+    
 
     ID3D11ShaderResourceView *SRV1, *SRV2, *SRV3, *SRV4, *SRV5, *SRV6, *SRV7, *SRV8, *SRV9, *SRV10, *SRV11, *SRV12, *SRV13;
     D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"models/texture/grass.png", NULL, NULL, &SRV1, NULL);
@@ -695,9 +714,9 @@ HRESULT InitDevice()
         mNumVertices += x->mNumVertices;
         mNumIndices += x->mNumIndices;
     }
-    m_pTerrain = new Terrain(); // 创建地形
+    /*m_pTerrain = new Terrain(); // 创建地形
     mNumVertices += m_pTerrain->m_vertices.size();
-    mNumIndices += m_pTerrain->m_indices.size();
+    mNumIndices += m_pTerrain->m_indices.size();*/
 
     // 开辟总顶点和总索引指针内存
     SimpleVertex* vertices = new SimpleVertex[mNumVertices];
@@ -712,12 +731,12 @@ HRESULT InitDevice()
         vertex_offset += models[i]->mNumVertices;
         index_offset += models[i]->mNumIndices;
     }
-    memcpy(vertices + vertex_offset, &m_pTerrain->m_vertices[0], sizeof(SimpleVertex) * m_pTerrain->m_vertices.size());
-    memcpy(indices + index_offset, &m_pTerrain->m_indices[0], sizeof(WORD) * m_pTerrain->m_indices.size());
-    m_pTerrain->vertex_offset = vertex_offset;
-    m_pTerrain->index_offset = index_offset;
+    //memcpy(vertices + vertex_offset, &m_pTerrain->m_vertices[0], sizeof(SimpleVertex) * m_pTerrain->m_vertices.size());
+    //memcpy(indices + index_offset, &m_pTerrain->m_indices[0], sizeof(WORD) * m_pTerrain->m_indices.size());
+    //m_pTerrain->vertex_offset = vertex_offset;
+    //m_pTerrain->index_offset = index_offset;
 
-    int levels = 20, slices = 20, radius = 100;
+    int levels = 50, slices = 50, radius = 100;
     // 创建天空球的顶点数据和索引数据（逆时针绘制）
     UINT vertexCount = 2 + (levels - 1) * (slices + 1);
     UINT indexCount = 6 * (levels - 1) * slices;
@@ -906,12 +925,22 @@ HRESULT InitDevice()
     sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
     sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
     sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-    sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+    sampDesc.ComparisonFunc = D3D11_COMPARISON_LESS;
     sampDesc.MinLOD = 0;
     sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
     hr = g_pd3dDevice->CreateSamplerState(&sampDesc, &g_pSamplerLinear);
     if (FAILED(hr))
         return hr;
+
+    ZeroMemory(&sampDesc, sizeof(sampDesc));
+    sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+    sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+    sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+    sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+    sampDesc.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL;
+    sampDesc.MinLOD = 0;
+    sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+    g_pd3dDevice->CreateSamplerState(&sampDesc, &g_pCubeSampler);
 
     // Initialize the projection matrix
     g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, width / (FLOAT)height, 0.01f, 1000000.0f);
@@ -1136,7 +1165,7 @@ void Render()
         }
         if (mouseState.leftButton) {
             if (isectSegAABB(vCamera, vTarget, treeAABB.MinPos, treeAABB.MaxPos, tmin, tmax)) {
-                m_pFirstPersonCamera->Jump();
+                MessageBox(NULL, L"你选中了商店！", L"提示信息", MB_OK);
             }
         }
     }
@@ -1208,6 +1237,7 @@ void Render()
     g_pImmediateContext->PSSetShader(g_pPixelShaders[5], NULL, 0);
     g_pImmediateContext->PSSetShaderResources(0, 1, &g_pTextureSkySRV);
     g_pImmediateContext->PSSetConstantBuffers(0, 1, &g_pSkyConstantBuffer);
+    g_pImmediateContext->PSSetSamplers(0, 1, &g_pCubeSampler);
     g_pImmediateContext->DrawIndexed(skyIndices.size(), 0, 0);
     //
     // Present our back buffer to our front buffer
