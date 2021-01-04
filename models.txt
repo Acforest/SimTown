@@ -1,2 +1,14 @@
-terrain		models/terrain/demo5.obj
-
+terrain		models/terrain/demo6.obj
+highschool	models/buildings/highschool.obj
+hospital		models/buildings/hospital.obj
+house1		models/buildings/house1.obj
+house2		models/buildings/house2.obj
+house3		models/buildings/house3.obj
+house4		models/buildings/house4.obj
+house5		models/buildings/house5.obj
+park		models/buildings/park.obj
+police		models/buildings/police.obj
+shop		models/buildings/shop.obj
+car		models/cars/car.obj
+tree		models/trees/tree.obj
+tree2		models/trees/tree2.obj

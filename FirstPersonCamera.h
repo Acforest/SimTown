@@ -88,7 +88,7 @@ public:
             up_down = 1;
         }
     }
-    // 检查跳跃状态
+    // 检查跳跃状态，minHeight为跳跃前高度，maxHeight为跳跃的最大高度
     void CheckJump(float d, float minHeight, float maxHeight)
     {
         if (mPosition.y < maxHeight && up_down == 1) {

@@ -44,20 +44,20 @@ struct ConstantBuffer
     XMFLOAT4 mColor;            // 漫反射颜色
 };
 
+
 // 模型
 struct Model
 {
-    std::string mName;      // 模型名称
-    int mNumMeshes = 0;     // mesh数
-    int mNumFaces = 0;      // 所有mesh的面数
-    int mNumVertices = 0;   // 所有mesh的顶点数
-    int mNumIndices = 0;    // 所有mesh的索引数
-    SimpleVertex* vertices; // 顶点内存
-    WORD* indices;          // 索引内存
+    std::string mName;                  // 模型名称
+    std::vector<SimpleVertex> vertices; // 顶点内存
+    std::vector<WORD> indices;          // 索引内存
     std::vector<XMFLOAT4> mColors;
     std::vector<std::string> mTextureNames;
     std::vector<int> meshVertexOffset;
     std::vector<int> meshIndexOffset;
+    ID3D11Buffer* mVertexBuffer;
+    ID3D11Buffer* mIndexBuffer;
+    ID3D11Buffer* mConstantBuffer;
 };
 
 // AABB盒
@@ -75,7 +75,7 @@ struct AABB
         MaxPos = worldPosFMaxMin;
         MinPos = worldPosFMaxMin;
         // 寻找世界坐标最大最小值
-        for (int i = 0; i < model->mNumVertices; i++) {
+        for (int i = 0; i < model->vertices.size(); i++) {
             XMVECTOR worldPosVec = XMLoadFloat3(&XMFLOAT3(model->vertices[i].Pos.x, model->vertices[i].Pos.y, model->vertices[i].Pos.z));
             worldPosVec = XMVector3TransformCoord(worldPosVec, mWorld);
             XMFLOAT3 worldPosF;

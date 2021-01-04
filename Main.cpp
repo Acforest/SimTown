@@ -197,7 +197,6 @@ void Terrain::Render(ConstantBuffer& cb, long vertex_offset, long index_offset)
     g_pImmediateContext->IASetInputLayout(g_pVertexLayout);
     g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, g_pDepthStencilView);
     g_pImmediateContext->OMSetDepthStencilState(g_pDSSNodepthWrite, 0);
-    g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, g_pDepthStencilView);
     g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
     g_pImmediateContext->IASetIndexBuffer(g_pIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
     g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, NULL, &cb, 0, 0);
@@ -217,14 +216,17 @@ namespace AssimpModel
     //--------------------------------------------------------------------------------------
     void LoadModel(const aiScene* scene, Model* model)
     {
+        int mNumVertices = 0;
+        int mNumFaces = 0;
+        int mNumIndices = 0;
         for (int i = 0; i < scene->mNumMeshes; i++) {
-            model->mNumFaces += scene->mMeshes[i]->mNumFaces; // 统计所有面数
-            model->mNumVertices += scene->mMeshes[i]->mNumVertices; // 统计所有mesh的顶点数，用于开辟内存空间
+            mNumFaces += scene->mMeshes[i]->mNumFaces; // 统计所有面数
+            mNumVertices += scene->mMeshes[i]->mNumVertices; // 统计所有mesh的顶点数，用于开辟内存空间
         }
-        model->mNumIndices = 3 * model->mNumFaces; // 计算所有索引数，索引数 = 面数 * 3
+        mNumIndices = 3 * mNumFaces; // 计算所有索引数，索引数 = 面数 * 3
 
         // 创建顶点内存
-        model->vertices = new SimpleVertex[model->mNumVertices]; // 开辟顶点空间
+        model->vertices.resize(mNumVertices); // 开辟顶点空间
         size_t count = 0; // 记录顶点偏移量
         std::vector<unsigned int> index_offset(1, 0);
 
@@ -258,7 +260,7 @@ namespace AssimpModel
                 else if (scene->mMeshes[i]->HasTextureCoords(0) && !scene->mMeshes[i]->HasNormals()) {
                     model->vertices[count++] = {
                         XMFLOAT3(scene->mMeshes[i]->mVertices[j].x, scene->mMeshes[i]->mVertices[j].y, scene->mMeshes[i]->mVertices[j].z),
-                        XMFLOAT3(0.0f, 0.0f, 0.0f),
+                        XMFLOAT3(0.0f, 0.0f, 1.0f),
                         XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
                         XMFLOAT2(scene->mMeshes[i]->mTextureCoords[0][j].x, scene->mMeshes[i]->mTextureCoords[0][j].y)
                     };
@@ -279,12 +281,12 @@ namespace AssimpModel
 
 
         // 创建索引内存
-        model->indices = new WORD[model->mNumIndices]; // 开辟索引空间
+        model->indices.resize(mNumIndices); // 开辟索引空间
         count = 0; // 记录顶点偏移量
         for (int i = 0; i < scene->mNumMeshes; i++) {
             for (int j = 0; j < scene->mMeshes[i]->mNumFaces; j++) {
                 aiFace face = scene->mMeshes[i]->mFaces[j];
-                //assert(face.mNumIndices == 3);
+                assert(face.mNumIndices == 3);
                 for (int k = 0; k < face.mNumIndices; k++) {
                     int index = face.mIndices[k]; // index值存入自己定义的索引数据结构中
                     model->indices[count++] = index + index_offset[i]; // 从第二个mesh开始，要考虑索引相对于第一个mesh的偏移
@@ -293,6 +295,32 @@ namespace AssimpModel
             meshIndexOffset += 3 * scene->mMeshes[i]->mNumFaces;
             model->meshIndexOffset.push_back(meshIndexOffset);
         }
+
+        D3D11_SUBRESOURCE_DATA InitData;
+        // 模型顶点缓冲区描述
+        D3D11_BUFFER_DESC bd;
+        ZeroMemory(&bd, sizeof(bd));
+        bd.Usage = D3D11_USAGE_DEFAULT;
+        bd.ByteWidth = sizeof(SimpleVertex) * model->vertices.size(); // 设置总顶点占用的显存空间
+        bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+        bd.CPUAccessFlags = 0;
+        // 创建模型顶点缓冲区
+        ZeroMemory(&InitData, sizeof(InitData));
+        InitData.pSysMem = &model->vertices[0];
+        g_pd3dDevice->CreateBuffer(&bd, &InitData, &model->mVertexBuffer);
+        // 模型索引缓冲区描述
+        bd.Usage = D3D11_USAGE_DEFAULT;
+        bd.ByteWidth = sizeof(WORD) * model->indices.size(); // 设置总索引占用的显存空间
+        bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+        bd.CPUAccessFlags = 0;
+        InitData.pSysMem = &model->indices[0];
+        g_pd3dDevice->CreateBuffer(&bd, &InitData, &model->mIndexBuffer);
+        // 模型常量缓冲区描述
+        bd.Usage = D3D11_USAGE_DEFAULT;
+        bd.ByteWidth = sizeof(ConstantBuffer);
+        bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        bd.CPUAccessFlags = 0;
+        g_pd3dDevice->CreateBuffer(&bd, NULL, &model->mConstantBuffer);
     }
 
     //--------------------------------------------------------------------------------------
@@ -328,17 +356,14 @@ namespace AssimpModel
         g_pImmediateContext->IASetInputLayout(g_pVertexLayout);
         g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, g_pDepthStencilView);
         g_pImmediateContext->OMSetDepthStencilState(g_pDSSNodepthWrite, 0);
-        // 设置模型顶点缓冲区
-        UINT stride = sizeof(SimpleVertex);
-        UINT offset = 0;
-        g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
-        // 设置模型索引缓冲区
-        g_pImmediateContext->IASetIndexBuffer(g_pIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
         for (int i = 0; i < models.size(); i++) {
             if (models[i]->mName == modelName) {
+                UINT stride = sizeof(SimpleVertex);
+                UINT offset = 0;
+                g_pImmediateContext->IASetVertexBuffers(0, 1, &models[i]->mVertexBuffer, &stride, &offset);
+                g_pImmediateContext->IASetIndexBuffer(models[i]->mIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
                 for (int j = 0; j < models[i]->meshIndexOffset.size() - 1; j++) {
                     m_pConstantBuffer.mWorld = XMMatrixTranspose(m_pWorld);
-                    //m_pConstantBuffer.mColor = models[i]->mColors[j];
                     // 非地形
                     if (i != 0) {
                         m_pConstantBuffer.mColor = models[i]->mColors[j];
@@ -347,20 +372,20 @@ namespace AssimpModel
                     else {
                         m_pConstantBuffer.mColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
                     }
-                    g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, NULL, &cb, 0, 0);
+                    g_pImmediateContext->UpdateSubresource(models[i]->mConstantBuffer, 0, NULL, &cb, 0, 0);
                     g_pImmediateContext->VSSetShader(g_pVertexShader, NULL, 0);
-                    g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
+                    g_pImmediateContext->VSSetConstantBuffers(0, 1, &models[i]->mConstantBuffer);
                     // 无贴图
                     if (models[i]->mTextureNames.empty()) {
                         // 无贴图模式
                         if (mTexMode == 0) {
                             g_pImmediateContext->PSSetShader(g_pPixelShaders[0], NULL, 0);
-                            g_pImmediateContext->PSSetConstantBuffers(0, 1, &g_pConstantBuffer);
+                            g_pImmediateContext->PSSetConstantBuffers(0, 1, &models[i]->mConstantBuffer);
                         }
                         // 贴木制贴图
                         else {
                             g_pImmediateContext->PSSetShader(g_pPixelShaders[4], NULL, 0);
-                            g_pImmediateContext->PSSetConstantBuffers(0, 1, &g_pConstantBuffer);
+                            g_pImmediateContext->PSSetConstantBuffers(0, 1, &models[i]->mConstantBuffer);
                             g_pImmediateContext->PSSetShaderResources(1, 1, &g_pTextureRV);
                         }
                     }
@@ -371,23 +396,23 @@ namespace AssimpModel
                             if (mTextureNames[k] == models[i]->mTextureNames[j]) {
                                 isFound = true;
                                 g_pImmediateContext->PSSetShader(g_pPixelShaders[4], NULL, 0);
-                                g_pImmediateContext->PSSetConstantBuffers(0, 1, &g_pConstantBuffer);
+                                g_pImmediateContext->PSSetConstantBuffers(0, 1, &models[i]->mConstantBuffer);
                                 g_pImmediateContext->PSSetShaderResources(1, 1, &mTextureRVs[k]);
                                 break;
                             }
                         }
                         if (isFound == false) {
                             g_pImmediateContext->PSSetShader(g_pPixelShaders[4], NULL, 0);
-                            g_pImmediateContext->PSSetConstantBuffers(0, 1, &g_pConstantBuffer);
+                            g_pImmediateContext->PSSetConstantBuffers(0, 1, &models[i]->mConstantBuffer);
                             g_pImmediateContext->PSSetShaderResources(1, 1, &g_pTextureRV);
-                        }                  
+                        }
                     }
                     g_pImmediateContext->PSSetSamplers(0, 1, &g_pSamplerLinear);
                     g_pImmediateContext->DrawIndexed(models[i]->meshIndexOffset[j], index_offset, vertex_offset); // 按索引数绘制图形
                 }
             }
-            index_offset += models[i]->mNumIndices;
-            vertex_offset += models[i]->mNumVertices;
+            index_offset += models[i]->indices.size();
+            vertex_offset += models[i]->vertices.size();
         }
     }
 }
@@ -669,7 +694,7 @@ HRESULT InitDevice()
     modelWorlds.push_back(XMMatrixScaling(10.0f, 10.0f, 10.0f) * XMMatrixTranslation(-500.0f, 0.0f, 500.0f) * XMMatrixRotationY(0.0f)); // park
     modelWorlds.push_back(XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixTranslation(500.0f, 0.0f, 300.0f) * XMMatrixRotationY(0.0f)); // police
     modelWorlds.push_back(XMMatrixScaling(5.0f, 5.0f, 5.0f) * XMMatrixTranslation(500.0f, 0.0f, 100.0f) * XMMatrixRotationY(0.0f)); // shop
-    //treeAABB.SetAABB(XMMatrixScaling(5.0f, 5.0f, 5.0f) * XMMatrixTranslation(500.0f, 0.0f, 100.0f) * XMMatrixRotationY(0.0f), models[0]);
+    treeAABB.SetAABB(XMMatrixScaling(5.0f, 5.0f, 5.0f) * XMMatrixTranslation(500.0f, 0.0f, 100.0f) * XMMatrixRotationY(0.0f), models[10]);
     modelWorlds.push_back(XMMatrixScaling(10.0f, 10.0f, 10.0f) * XMMatrixTranslation(0.0f, 0.0f, 0.0f) * XMMatrixRotationY(0.0f)); // car
     modelWorlds.push_back(XMMatrixScaling(5.0f, 5.0f, 5.0f) * XMMatrixTranslation(0.0f, 0.0f, -700.0f) * XMMatrixRotationY(0.0f)); // tree
     modelWorlds.push_back(XMMatrixScaling(5.0f, 5.0f, 5.0f) * XMMatrixTranslation(0.0f, 0.0f, -900.0f) * XMMatrixRotationY(0.0f)); // tree2
@@ -709,28 +734,6 @@ HRESULT InitDevice()
         AABBs.push_back(aabb);
     }
 
-    // 统计总顶点数和总索引数
-    for (auto x : models) {
-        mNumVertices += x->mNumVertices;
-        mNumIndices += x->mNumIndices;
-    }
-    /*m_pTerrain = new Terrain(); // 创建地形
-    mNumVertices += m_pTerrain->m_vertices.size();
-    mNumIndices += m_pTerrain->m_indices.size();*/
-
-    // 开辟总顶点和总索引指针内存
-    SimpleVertex* vertices = new SimpleVertex[mNumVertices];
-    WORD* indices = new WORD[mNumIndices];
-
-    // 拷贝模型数据到总顶点和总索引内存
-    long long vertex_offset = 0;
-    long long index_offset = 0;
-    for (int i = 0; i < models.size(); i++) {
-        memcpy(vertices + vertex_offset, models[i]->vertices, sizeof(SimpleVertex) * models[i]->mNumVertices);
-        memcpy(indices + index_offset, models[i]->indices, sizeof(WORD) * models[i]->mNumIndices);
-        vertex_offset += models[i]->mNumVertices;
-        index_offset += models[i]->mNumIndices;
-    }
     //memcpy(vertices + vertex_offset, &m_pTerrain->m_vertices[0], sizeof(SimpleVertex) * m_pTerrain->m_vertices.size());
     //memcpy(indices + index_offset, &m_pTerrain->m_indices[0], sizeof(WORD) * m_pTerrain->m_indices.size());
     //m_pTerrain->vertex_offset = vertex_offset;
@@ -804,6 +807,77 @@ HRESULT InitDevice()
         }
     }
 
+    cubeVertexVec.resize(24);
+    float w2 = (treeAABB.MaxPos.x - treeAABB.MinPos.x) / 2, h2 = (treeAABB.MaxPos.y - treeAABB.MinPos.y) / 2, d2 = (treeAABB.MaxPos.z - treeAABB.MinPos.z) / 2;
+
+    // 右面(+X面)
+    cubeVertexVec[0].Pos = XMFLOAT3(w2, -h2, -d2);
+    cubeVertexVec[1].Pos = XMFLOAT3(w2, h2, -d2);
+    cubeVertexVec[2].Pos = XMFLOAT3(w2, h2, d2);
+    cubeVertexVec[3].Pos = XMFLOAT3(w2, -h2, d2);
+    // 左面(-X面)
+    cubeVertexVec[4].Pos = XMFLOAT3(-w2, -h2, d2);
+    cubeVertexVec[5].Pos = XMFLOAT3(-w2, h2, d2);
+    cubeVertexVec[6].Pos = XMFLOAT3(-w2, h2, -d2);
+    cubeVertexVec[7].Pos = XMFLOAT3(-w2, -h2, -d2);
+    // 顶面(+Y面)
+    cubeVertexVec[8].Pos = XMFLOAT3(-w2, h2, -d2);
+    cubeVertexVec[9].Pos = XMFLOAT3(-w2, h2, d2);
+    cubeVertexVec[10].Pos = XMFLOAT3(w2, h2, d2);
+    cubeVertexVec[11].Pos = XMFLOAT3(w2, h2, -d2);
+    // 底面(-Y面)
+    cubeVertexVec[12].Pos = XMFLOAT3(w2, -h2, -d2);
+    cubeVertexVec[13].Pos = XMFLOAT3(w2, -h2, d2);
+    cubeVertexVec[14].Pos = XMFLOAT3(-w2, -h2, d2);
+    cubeVertexVec[15].Pos = XMFLOAT3(-w2, -h2, -d2);
+    // 背面(+Z面)
+    cubeVertexVec[16].Pos = XMFLOAT3(w2, -h2, d2);
+    cubeVertexVec[17].Pos = XMFLOAT3(w2, h2, d2);
+    cubeVertexVec[18].Pos = XMFLOAT3(-w2, h2, d2);
+    cubeVertexVec[19].Pos = XMFLOAT3(-w2, -h2, d2);
+    // 正面(-Z面)
+    cubeVertexVec[20].Pos = XMFLOAT3(-w2, -h2, -d2);
+    cubeVertexVec[21].Pos = XMFLOAT3(-w2, h2, -d2);
+    cubeVertexVec[22].Pos = XMFLOAT3(w2, h2, -d2);
+    cubeVertexVec[23].Pos = XMFLOAT3(w2, -h2, -d2);
+
+    for (UINT i = 0; i < 4; ++i)
+    {
+        // 右面(+X面)
+        cubeVertexVec[i].Normal = XMFLOAT3(1.0f, 0.0f, 0.0f);
+        cubeVertexVec[i].Color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        // 左面(-X面)
+        cubeVertexVec[i + 4].Normal = XMFLOAT3(-1.0f, 0.0f, 0.0f);
+        cubeVertexVec[i + 4].Color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        // 顶面(+Y面)
+        cubeVertexVec[i + 8].Normal = XMFLOAT3(0.0f, 1.0f, 0.0f);
+        cubeVertexVec[i + 8].Color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        // 底面(-Y面)
+        cubeVertexVec[i + 12].Normal = XMFLOAT3(0.0f, -1.0f, 0.0f);
+        cubeVertexVec[i + 12].Color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        // 背面(+Z面)
+        cubeVertexVec[i + 16].Normal = XMFLOAT3(0.0f, 0.0f, 1.0f);
+        cubeVertexVec[i + 16].Color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        // 正面(-Z面)
+        cubeVertexVec[i + 20].Normal = XMFLOAT3(0.0f, 0.0f, -1.0f);
+        cubeVertexVec[i + 20].Color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+    }
+    for (UINT i = 0; i < 6; ++i)
+    {
+        cubeVertexVec[i * 4].Texture = XMFLOAT2(0.0f, 1.0f);
+        cubeVertexVec[i * 4 + 1].Texture = XMFLOAT2(0.0f, 0.0f);
+        cubeVertexVec[i * 4 + 2].Texture = XMFLOAT2(1.0f, 0.0f);
+        cubeVertexVec[i * 4 + 3].Texture = XMFLOAT2(1.0f, 1.0f);
+    }
+    cubeIndexVec = {
+        0, 1, 2, 2, 3, 0,        // 右面(+X面)
+        4, 5, 6, 6, 7, 4,        // 左面(-X面)
+        8, 9, 10, 10, 11, 8,    // 顶面(+Y面)
+        12, 13, 14, 14, 15, 12,    // 底面(-Y面)
+        16, 17, 18, 18, 19, 16, // 背面(+Z面)
+        20, 21, 22, 22, 23, 20    // 正面(-Z面)
+    };
+
     D3D11_SUBRESOURCE_DATA InitData;
 
     // 天空盒顶点缓冲区描述
@@ -852,6 +926,35 @@ HRESULT InitDevice()
     dsDesc.StencilEnable = false;
     g_pd3dDevice->CreateDepthStencilState(&dsDesc, &g_pDSSLessEqual);
 
+
+    // 立方体顶点缓冲区描述
+    ZeroMemory(&vbd, sizeof(vbd));
+    vbd.Usage = D3D11_USAGE_DEFAULT;
+    vbd.ByteWidth = sizeof(SimpleVertex) * cubeVertexVec.size();
+    vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    vbd.CPUAccessFlags = 0;
+    // 创建立方体顶点缓冲区
+    ZeroMemory(&InitData, sizeof(InitData));
+    InitData.pSysMem = &cubeVertexVec[0];
+    g_pd3dDevice->CreateBuffer(&vbd, &InitData, &g_pCubeVertexBuffer);
+    // 立方体索引缓冲区描述
+    ZeroMemory(&ibd, sizeof(ibd));
+    ibd.Usage = D3D11_USAGE_DEFAULT;
+    ibd.ByteWidth = sizeof(WORD) * cubeIndexVec.size();
+    ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    ibd.CPUAccessFlags = 0;
+    // 创建立方体索引缓冲区
+    ZeroMemory(&InitData, sizeof(InitData));
+    InitData.pSysMem = &cubeIndexVec[0];
+    g_pd3dDevice->CreateBuffer(&ibd, &InitData, &g_pCubeIndexBuffer);
+    // 常量缓冲区描述
+    ZeroMemory(&cbd, sizeof(cbd));
+    cbd.Usage = D3D11_USAGE_DEFAULT;
+    cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+    cbd.ByteWidth = sizeof(ConstantBuffer);
+    g_pd3dDevice->CreateBuffer(&cbd, nullptr, &g_pCubeConstantBuffer);
+
+
     g_pTextureCubeSRVs.resize(6);
     D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"models/texture/sunset_posX.bmp", NULL, NULL, &g_pTextureCubeSRVs[0], NULL);
     D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"models/texture/sunset_posY.bmp", NULL, NULL, &g_pTextureCubeSRVs[1], NULL);
@@ -877,41 +980,9 @@ HRESULT InitDevice()
         return hr;
     }
 
-
-    // 模型顶点缓冲区描述
-    D3D11_BUFFER_DESC bd;
-    ZeroMemory(&bd, sizeof(bd));
-    bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(SimpleVertex) * mNumVertices; // 设置总顶点占用的显存空间
-    bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    bd.CPUAccessFlags = 0;
-    // 创建模型顶点缓冲区
-    ZeroMemory(&InitData, sizeof(InitData));
-    InitData.pSysMem = vertices;
-    hr = g_pd3dDevice->CreateBuffer(&bd, &InitData, &g_pVertexBuffer);
-    if (FAILED(hr))
-        return hr;
-    // 模型索引缓冲区描述
-    bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(WORD) * mNumIndices; // 设置总索引占用的显存空间
-    bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    bd.CPUAccessFlags = 0;
-    InitData.pSysMem = indices;
-    hr = g_pd3dDevice->CreateBuffer(&bd, &InitData, &g_pIndexBuffer);
-    if (FAILED(hr))
-        return hr;
-
     // Set primitive topology
     g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    // Create the constant buffer
-    bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(ConstantBuffer);
-    bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    bd.CPUAccessFlags = 0;
-    hr = g_pd3dDevice->CreateBuffer(&bd, NULL, &g_pConstantBuffer);
-    if (FAILED(hr))
-        return hr;
 
     // Load the Texture
     hr = D3DX11CreateShaderResourceViewFromFile(g_pd3dDevice, L"models/texture/tile_wood.jpg", NULL, NULL, &g_pTextureRV, NULL);
@@ -1223,6 +1294,23 @@ void Render()
 
     UINT stride = sizeof(SimpleVertex);
     UINT offset = 0;
+    cb.mWorld = XMMatrixTranspose(XMMatrixScaling(5.0f, 5.0f, 5.0f) * XMMatrixTranslation(500.0f, 0.0f, 100.0f) * XMMatrixRotationY(0.0f));
+    cb.mView = XMMatrixTranspose(g_View);
+    cb.mProjection = XMMatrixTranspose(g_Projection);
+    cb.vCamera = vCamera;
+    cb.vTarget = vTarget;
+    g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pCubeVertexBuffer, &stride, &offset);
+    g_pImmediateContext->IASetIndexBuffer(g_pCubeIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+    g_pImmediateContext->OMSetDepthStencilState(g_pDSSNodepthWrite, 0);
+    g_pImmediateContext->UpdateSubresource(g_pCubeConstantBuffer, 0, NULL, &cb, 0, 0);
+    g_pImmediateContext->VSSetShader(g_pVertexShader, NULL, 0);
+    g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pCubeConstantBuffer);
+    g_pImmediateContext->PSSetShader(g_pPixelShaders[0], NULL, 0);
+    g_pImmediateContext->PSSetShaderResources(1, 1, &g_pTextureSkySRV);
+    g_pImmediateContext->PSSetConstantBuffers(0, 1, &g_pCubeConstantBuffer);
+    g_pImmediateContext->PSSetSamplers(0, 1, &g_pCubeSampler);
+    g_pImmediateContext->DrawIndexed(cubeIndexVec.size(), 0, 0);
+
     cb.mWorld = XMMatrixTranspose(XMMatrixIdentity());
     cb.mView = XMMatrixTranspose(g_View);
     cb.mProjection = XMMatrixTranspose(g_Projection);

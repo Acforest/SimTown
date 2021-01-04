@@ -47,7 +47,6 @@ PS_INPUT VS(VS_INPUT input)
     output.PosL = input.Pos;
     output.Norm = mul(input.Norm, (float3x4) World);
     output.Tex = input.Tex;
-    //output.ShadowPosH = mul(output.PosW, );
     return output;
 }
 
@@ -130,14 +129,7 @@ float4 PS_Toon_Shading(PS_INPUT input) : SV_Target
 
 float4 PS_Texture_Mapping(PS_INPUT input) : SV_Target
 {
-    float4 finalColor = { 1.0f, 1.0f, 1.0f, 1.0f };
     float4 tex_color = txDiffuse.Sample(samLinear, input.Tex);
-    float2 shadowTex = float2(0.5f * input.PosH.x / input.PosH.w + 0.5f, -0.5f * input.PosH.y / input.PosH.w + 0.5f);
-    
-    if (saturate(shadowTex.x) == shadowTex.x && saturate(shadowTex.y) == shadowTex.y)
-    {
-        
-    }
     return tex_color * mColor;
 }
 

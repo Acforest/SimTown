@@ -82,6 +82,12 @@ std::vector<XMMATRIX> modelWorlds; // 存放模型所有世界矩阵
 std::vector<std::string> mTextureNames;
 std::vector<ID3D11ShaderResourceView* > mTextureRVs;
 
+std::vector<SimpleVertex> cubeVertexVec;
+std::vector<WORD> cubeIndexVec;
+ID3D11Buffer* g_pCubeVertexBuffer = NULL;
+ID3D11Buffer* g_pCubeIndexBuffer = NULL;
+ID3D11Buffer* g_pCubeConstantBuffer = NULL;
+
 AABB treeAABB;
 
 
