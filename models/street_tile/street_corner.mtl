@@ -1,16 +1,90 @@
-# 3ds Max Wavefront OBJ Exporter v0.97b - (c)2007 guruware
-# File Created: 20.11.2020 19:05:45
+# Blender MTL File: 'None'
+# Material Count: 8
 
 newmtl 09___Default
-	Ns 10.0000
-	Ni 1.5000
-	d 1.0000
-	Tr 0.0000
-	Tf 1.0000 1.0000 1.0000 
-	illum 2
-	Ka 0.1608 0.1608 0.1137
-	Kd 0.1608 0.1608 0.1137
-	Ks 0.0000 0.0000 0.0000
-	Ke 0.0000 0.0000 0.0000
-	map_Ka StreetCorner.jpg
-	map_Kd StreetCorner.jpg
+Ns 10.000002
+Ka 1.000000 1.000000 1.000000
+Kd 0.160800 0.160800 0.113700
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd E:\\Desktop\\DX11\\1\\SimTown\\models\\terrain\\StreetCorner.jpg
+
+newmtl 09___Default.001
+Ns 10.000002
+Ka 1.000000 1.000000 1.000000
+Kd 0.160800 0.160800 0.113700
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd E:\\Desktop\\DX11\\1\\SimTown\\models\\terrain\\StreetLine.jpg
+
+newmtl 09___Default.003
+Ns 10.000002
+Ka 1.000000 1.000000 1.000000
+Kd 0.160800 0.160800 0.113700
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd E:\\Desktop\\DX11\\1\\SimTown\\models\\terrain\\StreetEnd.jpg
+
+newmtl 09___Default.004
+Ns 10.000002
+Ka 1.000000 1.000000 1.000000
+Kd 0.160800 0.160800 0.113700
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd E:\\Desktop\\DX11\\1\\SimTown\\models\\terrain\\StreetEnd.jpg
+
+newmtl Material_#26
+Ns 18.000005
+Ka 1.000000 1.000000 1.000000
+Kd 0.588000 0.588000 0.588000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 1
+map_Kd E:\\Desktop\\DX11\\1\\SimTown\\models\\male_02\\Textures\\male_diffuse_white_med-facial.jpg
+
+newmtl Material_1
+Ns 7.999999
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 1
+map_Kd E:\\Desktop\\DX11\\1\\SimTown\\models\\BunnyLoli\\M61501.dds
+
+newmtl Material_2
+Ns 7.999999
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 1
+map_Kd E:\\Desktop\\DX11\\1\\SimTown\\models\\BunnyLoli\\M61501.dds
+
+newmtl grass
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd E:\\Desktop\\DX11\\1\\SimTown\\models\\terrain\\grass.png

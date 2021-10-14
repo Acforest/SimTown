@@ -22,17 +22,14 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Tutorial04.cpp">
-      <Filter>Resource Files</Filter>
-    </ClCompile>
     <ClCompile Include="Keyboard.cpp">
       <Filter>通用文件</Filter>
     </ClCompile>
     <ClCompile Include="Mouse.cpp">
       <Filter>通用文件</Filter>
     </ClCompile>
-    <ClCompile Include="input.cpp">
-      <Filter>通用文件</Filter>
+    <ClCompile Include="Main.cpp">
+      <Filter>Resource Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -42,7 +39,31 @@
     <ClInclude Include="Mouse.h">
       <Filter>通用文件</Filter>
     </ClInclude>
-    <ClInclude Include="input.h">
+    <ClInclude Include="Resource.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Main.h">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FirstPersonCamera.h">
+      <Filter>通用文件</Filter>
+    </ClInclude>
+    <ClInclude Include="SkyBox.h">
+      <Filter>通用文件</Filter>
+    </ClInclude>
+    <ClInclude Include="AssimpModel.h">
+      <Filter>通用文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Terrain.h">
+      <Filter>通用文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Helper.h">
+      <Filter>通用文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Ray.h">
+      <Filter>通用文件</Filter>
+    </ClInclude>
+    <ClInclude Include="FreeLookCamera.h">
       <Filter>通用文件</Filter>
     </ClInclude>
   </ItemGroup>

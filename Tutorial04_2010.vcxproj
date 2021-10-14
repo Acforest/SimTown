@@ -372,18 +372,25 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="input.cpp" />
     <ClCompile Include="Keyboard.cpp" />
     <ClCompile Include="Mouse.cpp" />
-    <ClCompile Include="Tutorial04.cpp" />
+    <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Tutorial04.fx" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="input.h" />
+    <ClInclude Include="AssimpModel.h" />
+    <ClInclude Include="FirstPersonCamera.h" />
+    <ClInclude Include="Helper.h" />
     <ClInclude Include="Keyboard.h" />
+    <ClInclude Include="Main.h" />
     <ClInclude Include="Mouse.h" />
+    <ClInclude Include="Ray.h" />
+    <ClInclude Include="Resource.h" />
+    <ClInclude Include="SkyBox.h" />
+    <ClInclude Include="Terrain.h" />
+    <ClInclude Include="FreeLookCamera.h" />
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>
