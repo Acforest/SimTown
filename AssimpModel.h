@@ -34,9 +34,9 @@ struct DirectionalLight
 // 常量缓存
 struct ConstantBuffer
 {
-    XMMATRIX mWorld;
-    XMMATRIX mView;
-    XMMATRIX mProjection;
+    XMMATRIX mWorld;            // 世界矩阵
+    XMMATRIX mView;             // 观察矩阵
+    XMMATRIX mProjection;       // 投影矩阵
     XMFLOAT4 vLightDir[3];      // 光线方向
     XMFLOAT4 vLightColor[3];    // 光线颜色
     XMFLOAT4 vCamera;           // 相机位置
